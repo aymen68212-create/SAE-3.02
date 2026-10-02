@@ -10,8 +10,10 @@ class Serveur:
     def __init__(self, port):
         self.port = port
         self.socket_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_serveur.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.clients = []
         self.db = Database()
+        self.pret = threading.Event()
 
     def get_port(self):
         return self.port
@@ -24,6 +26,7 @@ class Serveur:
         self.socket_serveur.bind((HOTE, self.get_port()))
         self.socket_serveur.listen()
         print("Serveur en attente de connexions...")
+        self.pret.set()
         while True:
             connexion, adresse = self.socket_serveur.accept()
             print("Client connecté :", adresse)
@@ -33,7 +36,10 @@ class Serveur:
 
     def gerer_client(self, connexion, adresse):
         while True:
-            donnees = connexion.recv(1024)
+            try:
+                donnees = connexion.recv(1024)
+            except OSError:
+                break
             if not donnees:
                 break
             message = json.loads(donnees.decode())

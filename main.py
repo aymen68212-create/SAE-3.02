@@ -9,12 +9,10 @@ from PyQt5.QtWidgets import QApplication
 
 PORT = 5050
 
-def lancer_serveur():
-    serveur = Serveur(PORT)
+def lancer_serveur(serveur):
     serveur.demarrer()
 
 def lancer_infrastructure(carte):
-    time.sleep(1)
     infrastructure = Infrastructure()
     infrastructure.callback_feux = lambda msg: carte.mettre_a_jour_feux({
         "nord": msg.get("nord", False),
@@ -26,7 +24,6 @@ def lancer_infrastructure(carte):
     infrastructure.ecouter()
 
 def lancer_ambulance(carte):
-    time.sleep(1)
     trajet = [(100, 500), (200, 430), (300, 360), (400, 290), (450, 240), (450, 180)]
     ambulance = Ambulance(trajet)
     ambulance.connecter()
@@ -40,8 +37,10 @@ if __name__ == "__main__":
     carte = Carte()
     carte.show()
 
-    thread_serveur = threading.Thread(target=lancer_serveur, daemon=True)
+    serveur = Serveur(PORT)
+    thread_serveur = threading.Thread(target=lancer_serveur, args=(serveur,), daemon=True)
     thread_serveur.start()
+    serveur.pret.wait()  # attend que le serveur ecoute avant de connecter les clients
 
     thread_infra = threading.Thread(target=lancer_infrastructure, args=(carte,), daemon=True)
     thread_infra.start()
