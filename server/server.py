@@ -45,3 +45,4 @@ class Serveur:
 if __name__ == "__main__":
     serveur = Serveur(PORT)
     serveur.demarrer()
+    serveur
