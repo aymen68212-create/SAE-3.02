@@ -9,6 +9,7 @@ class Infrastructure:
     def __init__(self):
         self.etat_feu = None
         self.connexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.callback_feux = None
 
     def get_etat_feu(self):
         return self.etat_feu
@@ -27,13 +28,13 @@ class Infrastructure:
             message = json.loads(donnees.decode())
             self.set_etat_feu(message)
             print("Ordre reçu du serveur :", self.get_etat_feu())
+            if self.callback_feux:
+                self.callback_feux(message)
         self.connexion.close()
-
 
 if __name__ == "__main__":
     infrastructure = Infrastructure()
     infrastructure.connecter()
-
     thread_ecoute = threading.Thread(target=infrastructure.ecouter)
     thread_ecoute.start()
     thread_ecoute.join()

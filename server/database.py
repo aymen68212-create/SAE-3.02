@@ -24,9 +24,9 @@ class Database:
             curseur.execute(f"USE {DB_NAME}")
             self.creer_tables(curseur)
             self.connexion.commit()
-            print("[DB] Connexion réussie et base initialisée.")
+            print("[DB] Connexion réussie.")
         except mariadb.Error as e:
-            print(f"[DB] Erreur de connexion : {e}")
+            print(f"[DB] Erreur : {e}")
             sys.exit(1)
 
     def creer_tables(self, curseur):
@@ -39,7 +39,6 @@ class Database:
                 horodatage TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        print("[DB] Table 'evenements' prête.")
 
     def inserer_evenement(self, type_evenement, x, y):
         try:
@@ -49,11 +48,9 @@ class Database:
                 (type_evenement, x, y)
             )
             self.connexion.commit()
-            print(f"[DB] Événement enregistré : {type_evenement} à ({x}, {y})")
         except mariadb.Error as e:
             print(f"[DB] Erreur insertion : {e}")
 
     def fermer(self):
         if self.connexion:
             self.connexion.close()
-            print("[DB] Connexion fermée.")

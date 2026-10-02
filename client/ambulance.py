@@ -4,8 +4,7 @@ import time
 import threading
 
 HOTE = "localhost"
-PORT = 5050  
-
+PORT = 5050
 
 class Ambulance:
     def __init__(self, trajet):
@@ -24,7 +23,7 @@ class Ambulance:
 
     def envoyer_position(self, x, y):
         self.set_position((x, y))
-        message = json.dumps({"x": x, "y": y})
+        message = json.dumps({"type": "position_ambulance", "x": x, "y": y})
         self.connexion.send(message.encode())
         print("Position envoyée :", self.get_position())
 
@@ -34,12 +33,10 @@ class Ambulance:
             time.sleep(1)
         self.connexion.close()
 
-
 if __name__ == "__main__":
     trajet = [(100, 500), (200, 400), (300, 300), (400, 200)]
     ambulance = Ambulance(trajet)
     ambulance.connecter()
-
     thread_deplacement = threading.Thread(target=ambulance.deplacer)
     thread_deplacement.start()
     thread_deplacement.join()
