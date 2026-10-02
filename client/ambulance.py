@@ -4,7 +4,7 @@ import time
 import threading
 
 HOTE = "localhost"
-PORT = 5050  # 5000 est pris par AirPlay Receiver sur macOS, on évite
+PORT = 5050  
 
 
 class Ambulance:

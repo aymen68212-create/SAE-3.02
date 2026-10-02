@@ -3,8 +3,7 @@ import json
 import threading
 
 HOTE = "localhost"
-PORT = 5050  # 5000 est pris par AirPlay Receiver sur macOS, on évite
-
+PORT = 5050
 
 class Serveur:
     def __init__(self, port):
@@ -45,4 +44,4 @@ class Serveur:
 if __name__ == "__main__":
     serveur = Serveur(PORT)
     serveur.demarrer()
-    serveur
+
