@@ -1,3 +1,5 @@
+import threading
+
 try:
     import mariadb
 except ImportError:
@@ -9,9 +11,11 @@ DB_USER = "root"
 DB_PASSWORD = "root"
 DB_NAME = "sae302"
 
+
 class Database:
     def __init__(self):
         self.connexion = None
+        self.verrou = threading.Lock()
 
     def connecter(self):
         if mariadb is None:
@@ -48,15 +52,16 @@ class Database:
     def inserer_evenement(self, type_evenement, x, y):
         if self.connexion is None:
             return
-        try:
-            curseur = self.connexion.cursor()
-            curseur.execute(
-                "INSERT INTO evenements (type_evenement, position_x, position_y) VALUES (?, ?, ?)",
-                (type_evenement, x, y)
-            )
-            self.connexion.commit()
-        except mariadb.Error as e:
-            print(f"[DB] Erreur insertion : {e}")
+        with self.verrou:
+            try:
+                curseur = self.connexion.cursor()
+                curseur.execute(
+                    "INSERT INTO evenements (type_evenement, position_x, position_y) VALUES (?, ?, ?)",
+                    (type_evenement, x, y)
+                )
+                self.connexion.commit()
+            except mariadb.Error as e:
+                print(f"[DB] Erreur insertion : {e}")
 
     def fermer(self):
         if self.connexion:

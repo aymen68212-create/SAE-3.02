@@ -1,36 +1,37 @@
 import threading
 import time
 import sys
+from PyQt5.QtWidgets import QApplication
+from parametres import PORT, VITESSE_AMBULANCE, FREQUENCE_POSITION, generer_trajet
 from server.server import Serveur
 from client.ambulance import Ambulance
 from client.infrastructure import Infrastructure
 from gui.carte import Carte
-from PyQt5.QtWidgets import QApplication
 
-PORT = 5050
 
 def lancer_serveur(serveur):
     serveur.demarrer()
 
-def lancer_infrastructure(carte):
+
+def lancer_infrastructure(carte, infrastructure_prete):
     infrastructure = Infrastructure()
-    infrastructure.callback_feux = lambda msg: carte.mettre_a_jour_feux({
-        "nord": msg.get("nord", False),
-        "sud": msg.get("sud", False),
-        "est": msg.get("est", False),
-        "ouest": msg.get("ouest", False)
-    })
+    infrastructure.callback_feux = lambda message: carte.mettre_a_jour_feu(message["id"], message["etat"])
     infrastructure.connecter()
+    infrastructure_prete.set()
     infrastructure.ecouter()
 
-def lancer_ambulance(carte):
-    trajet = [(100, 500), (200, 430), (300, 360), (400, 290), (450, 240), (450, 180)]
+
+def lancer_ambulance(carte, infrastructure_prete):
+    infrastructure_prete.wait()
+    time.sleep(1)
+    trajet = generer_trajet(VITESSE_AMBULANCE / FREQUENCE_POSITION)
     ambulance = Ambulance(trajet)
+    ambulance.callback_position = carte.mettre_a_jour_ambulance
+    ambulance.callback_onde = carte.ajouter_onde
     ambulance.connecter()
-    for x, y in trajet:
-        ambulance.envoyer_position(x, y)
-        carte.mettre_a_jour_ambulance(x, y)
-        time.sleep(1)
+    ambulance.deplacer()
+    ambulance.terminer()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -40,12 +41,14 @@ if __name__ == "__main__":
     serveur = Serveur(PORT)
     thread_serveur = threading.Thread(target=lancer_serveur, args=(serveur,), daemon=True)
     thread_serveur.start()
-    serveur.pret.wait()  # attend que le serveur ecoute avant de connecter les clients
+    serveur.pret.wait()
 
-    thread_infra = threading.Thread(target=lancer_infrastructure, args=(carte,), daemon=True)
-    thread_infra.start()
+    infrastructure_prete = threading.Event()
 
-    thread_ambulance = threading.Thread(target=lancer_ambulance, args=(carte,), daemon=True)
+    thread_infrastructure = threading.Thread(target=lancer_infrastructure, args=(carte, infrastructure_prete), daemon=True)
+    thread_infrastructure.start()
+
+    thread_ambulance = threading.Thread(target=lancer_ambulance, args=(carte, infrastructure_prete), daemon=True)
     thread_ambulance.start()
 
     sys.exit(app.exec_())

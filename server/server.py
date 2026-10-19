@@ -1,10 +1,11 @@
 import socket
 import json
 import threading
+import time
+import math
 from server.database import Database
+from parametres import HOTE, PORT, FEUX, VITESSE_ONDE, PORTEE_ONDE
 
-HOTE = "localhost"
-PORT = 5050
 
 class Serveur:
     def __init__(self, port):
@@ -12,8 +13,15 @@ class Serveur:
         self.socket_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_serveur.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.clients = []
+        self.infrastructures = []
         self.db = Database()
         self.pret = threading.Event()
+        self.verrou = threading.Lock()
+        self.position_ambulance = None
+        self.cap_ambulance = None
+        self.ondes = []
+        self.etat_feux = {id_feu: "rouge" for id_feu in FEUX}
+        self.compteur_positions = 0
 
     def get_port(self):
         return self.port
@@ -26,45 +34,126 @@ class Serveur:
         self.socket_serveur.bind((HOTE, self.get_port()))
         self.socket_serveur.listen()
         print("Serveur en attente de connexions...")
+        thread_supervision = threading.Thread(target=self.superviser, daemon=True)
+        thread_supervision.start()
         self.pret.set()
         while True:
             connexion, adresse = self.socket_serveur.accept()
             print("Client connecté :", adresse)
-            self.clients.append(connexion)
-            thread_client = threading.Thread(target=self.gerer_client, args=(connexion, adresse))
+            with self.verrou:
+                self.clients.append(connexion)
+            thread_client = threading.Thread(target=self.gerer_client, args=(connexion, adresse), daemon=True)
             thread_client.start()
 
-    def gerer_client(self, connexion, adresse):
+    def lire_messages(self, connexion):
+        tampon = ""
         while True:
             try:
-                donnees = connexion.recv(1024)
+                donnees = connexion.recv(4096)
             except OSError:
-                break
+                return
             if not donnees:
-                break
-            message = json.loads(donnees.decode())
-            print(f"Message de {adresse} :", message)
-            if message.get("type") == "position_ambulance":
-                x = message.get("x")
-                y = message.get("y")
-                self.db.inserer_evenement("position_ambulance", x, y)
-                if self.ambulance_proche_carrefour(x, y):
-                    self.db.inserer_evenement("feux_vert", x, y)
-                    ordre = json.dumps({"type": "feux_vert", "nord": True, "sud": True, "est": True, "ouest": True})
-                    for client in self.clients:
-                        try:
-                            client.send(ordre.encode())
-                        except:
-                            pass
+                return
+            tampon += donnees.decode()
+            while "\n" in tampon:
+                ligne, tampon = tampon.split("\n", 1)
+                if ligne.strip():
+                    yield json.loads(ligne)
+
+    def gerer_client(self, connexion, adresse):
+        for message in self.lire_messages(connexion):
+            self.traiter_message(connexion, message)
         connexion.close()
-        self.clients.remove(connexion)
+        with self.verrou:
+            if connexion in self.clients:
+                self.clients.remove(connexion)
+            if connexion in self.infrastructures:
+                self.infrastructures.remove(connexion)
         print("Client déconnecté :", adresse)
 
-    def ambulance_proche_carrefour(self, x, y):
-        carrefour_x = 450
-        carrefour_y = 240
-        distance = ((x - carrefour_x) ** 2 + (y - carrefour_y) ** 2) ** 0.5
-        return distance < 100
+    def traiter_message(self, connexion, message):
+        type_message = message.get("type")
+        if type_message == "identification":
+            if message.get("role") == "infrastructure":
+                with self.verrou:
+                    self.infrastructures.append(connexion)
+        elif type_message == "position_ambulance":
+            x = message.get("x")
+            y = message.get("y")
+            with self.verrou:
+                self.position_ambulance = (x, y)
+                self.cap_ambulance = message.get("cap")
+                self.compteur_positions += 1
+                enregistrer = self.compteur_positions % 10 == 1
+            if enregistrer:
+                self.db.inserer_evenement("position_ambulance", x, y)
+        elif type_message == "onde":
+            with self.verrou:
+                self.ondes.append(time.time())
+            self.db.inserer_evenement("onde_ambulance", message.get("x"), message.get("y"))
+        elif type_message == "arrivee":
+            self.reinitialiser()
+
+    def superviser(self):
+        while True:
+            time.sleep(0.03)
+            self.mettre_a_jour_feux()
+
+    def mettre_a_jour_feux(self):
+        maintenant = time.time()
+        changements = []
+        with self.verrou:
+            self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
+            position = self.position_ambulance
+            cap = self.cap_ambulance
+            if position is None:
+                return
+            rayon = (maintenant - self.ondes[0]) * VITESSE_ONDE if self.ondes else 0
+            for id_feu, feu in FEUX.items():
+                actuel = self.etat_feux[id_feu]
+                if feu["approche"] != cap:
+                    nouveau = "rouge"
+                elif actuel == "vert" or self.distance(position, feu) <= rayon:
+                    nouveau = "vert"
+                else:
+                    nouveau = "rouge"
+                if nouveau != actuel:
+                    self.etat_feux[id_feu] = nouveau
+                    changements.append((id_feu, nouveau, position))
+        for id_feu, etat, position in changements:
+            self.signaler_feu(id_feu, etat, position)
+
+    def distance(self, position, feu):
+        return math.hypot(position[0] - feu["x"], position[1] - feu["y"])
+
+    def signaler_feu(self, id_feu, etat, position):
+        print(f"Feu {id_feu} -> {etat}")
+        self.db.inserer_evenement(f"feu_{etat}:{id_feu}", position[0], position[1])
+        self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": etat})
+
+    def envoyer_aux_infrastructures(self, message):
+        ligne = (json.dumps(message) + "\n").encode()
+        with self.verrou:
+            cibles = list(self.infrastructures)
+        for cible in cibles:
+            try:
+                cible.sendall(ligne)
+            except OSError:
+                pass
+
+    def reinitialiser(self):
+        with self.verrou:
+            self.position_ambulance = None
+            self.cap_ambulance = None
+            self.ondes = []
+            self.compteur_positions = 0
+            a_remettre = [id_feu for id_feu, etat in self.etat_feux.items() if etat != "rouge"]
+            for id_feu in a_remettre:
+                self.etat_feux[id_feu] = "rouge"
+        for id_feu in a_remettre:
+            print(f"Feu {id_feu} -> rouge")
+            self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": "rouge"})
+
 
 if __name__ == "__main__":
     serveur = Serveur(PORT)
