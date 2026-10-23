@@ -20,6 +20,14 @@ FEUX = {
 }
 
 
+FEU_AMBULANCE = "sud_droite"
+PAIRE_AMBULANCE = ("sud_droite", "nord_gauche")
+
+
+def etats_initiaux():
+    return {id_feu: "rouge" if id_feu in PAIRE_AMBULANCE else "vert" for id_feu in FEUX}
+
+
 def cap_depuis_deplacement(dx, dy):
     if abs(dx) >= abs(dy):
         return "est" if dx > 0 else "ouest"

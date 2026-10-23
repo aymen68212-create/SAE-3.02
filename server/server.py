@@ -4,7 +4,7 @@ import threading
 import time
 import math
 from server.database import Database
-from parametres import HOTE, PORT, FEUX, VITESSE_ONDE, PORTEE_ONDE
+from parametres import HOTE, PORT, FEUX, FEU_AMBULANCE, PAIRE_AMBULANCE,VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
 
 
 class Serveur:
@@ -20,7 +20,8 @@ class Serveur:
         self.position_ambulance = None
         self.cap_ambulance = None
         self.ondes = []
-        self.etat_feux = {id_feu: "rouge" for id_feu in FEUX}
+        self.etat_feux = etats_initiaux()
+        self.phase = "attente"
         self.compteur_positions = 0
 
     def get_port(self):
@@ -109,14 +110,17 @@ class Serveur:
             if position is None:
                 return
             rayon = (maintenant - self.ondes[0]) * VITESSE_ONDE if self.ondes else 0
-            for id_feu, feu in FEUX.items():
+            distance = self.distance(position, FEUX[FEU_AMBULANCE])
+            if self.phase == "attente" and distance <= rayon:
+                self.phase = "passage"
+            elif self.phase == "passage" and distance > PORTEE_ONDE:
+                self.phase = "apres"
+            for id_feu in FEUX:
                 actuel = self.etat_feux[id_feu]
-                if feu["approche"] != cap:
-                    nouveau = "rouge"
-                elif actuel == "vert" or self.distance(position, feu) <= rayon:
-                    nouveau = "vert"
+                if id_feu in PAIRE_AMBULANCE:
+                    nouveau = "vert" if self.phase == "passage" else "rouge"
                 else:
-                    nouveau = "rouge"
+                    nouveau = "rouge" if self.phase == "passage" else "vert"
                 if nouveau != actuel:
                     self.etat_feux[id_feu] = nouveau
                     changements.append((id_feu, nouveau, position))
@@ -147,12 +151,14 @@ class Serveur:
             self.cap_ambulance = None
             self.ondes = []
             self.compteur_positions = 0
-            a_remettre = [id_feu for id_feu, etat in self.etat_feux.items() if etat != "rouge"]
+            self.phase = "attente"
+            initiaux = etats_initiaux()
+            a_remettre = [id_feu for id_feu, etat in self.etat_feux.items() if etat != initiaux[id_feu]]
             for id_feu in a_remettre:
-                self.etat_feux[id_feu] = "rouge"
+                self.etat_feux[id_feu] = initiaux[id_feu]
         for id_feu in a_remettre:
-            print(f"Feu {id_feu} -> rouge")
-            self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": "rouge"})
+            print(f"Feu {id_feu} -> {initiaux[id_feu]}")
+            self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": initiaux[id_feu]})
 
 
 if __name__ == "__main__":

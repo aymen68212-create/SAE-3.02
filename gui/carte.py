@@ -5,7 +5,15 @@ import threading
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QPainterPath, QFont
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
-from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE
+from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
+
+DISTANCE_SUIVEUSE = 70
+VITESSE_VOITURE = 90
+LIGNE_ARRET_OPPOSEE = 665
+VOITURES_ARRETEES = [
+    (450, 200, 90, QColor(60, 110, 200)),
+    (340, 350, -26.6, QColor(220, 170, 40)),
+]
 
 FOND = QColor(244, 239, 226)
 ROUTE = QColor(76, 78, 84)
@@ -58,7 +66,8 @@ class Carte(QWidget):
         self.ambulance_x = 550
         self.ambulance_y = 690
         self.angle = -90
-        self.feux = {id_feu: "rouge" for id_feu in FEUX}
+        self.feux = etats_initiaux()
+        self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
         self.ondes = []
         self.verrou = threading.Lock()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
@@ -67,8 +76,12 @@ class Carte(QWidget):
         self.dessiner_decor(peintre)
         peintre.end()
         self.timer = QTimer()
+        self.timer.timeout.connect(self.avancer_opposee)
         self.timer.timeout.connect(self.update)
         self.timer.start(25)
+        self.trajet_oppose = self.generer_trajet_oppose()
+        self.indice_oppose = 0.0
+        self.dernier_temps = time.time()
 
     def dessiner_decor(self, p):
         p.fillRect(0, 0, LARGEUR, HAUTEUR, FOND)
@@ -120,6 +133,61 @@ class Carte(QWidget):
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(40, 50, 70))
         p.drawRoundedRect(QRectF(x + l * 0.3, y + 3, l * 0.38, h - 6), 3, 3)
+
+    def generer_trajet_oppose(self):
+        trajet = []
+        morceaux = [
+            points_ligne((910, 295), (550, 295), 1),
+            points_arc((550, 395), 100, -90, -180, 1),
+            points_ligne((450, 395), (450, 760), 1),
+        ]
+        for morceau in morceaux:
+            for point in morceau:
+                if not trajet or trajet[-1] != point:
+                    trajet.append(point)
+        return trajet
+
+    def avancer_opposee(self):
+        maintenant = time.time()
+        pas = (maintenant - self.dernier_temps) * VITESSE_VOITURE
+        self.dernier_temps = maintenant
+        suivant = self.indice_oppose + pas
+        x = self.trajet_oppose[int(self.indice_oppose)][0]
+        y = self.trajet_oppose[int(self.indice_oppose)][1]
+        avant_ligne = y == 295 and x > LIGNE_ARRET_OPPOSEE
+        if avant_ligne and self.feux["nord_droite"] == "rouge":
+            suivant = min(suivant, self.indice_ligne_arret())
+        self.indice_oppose = min(suivant, len(self.trajet_oppose) - 1)
+
+    def indice_ligne_arret(self):
+        return next(i for i, (x, y) in enumerate(self.trajet_oppose) if x <= LIGNE_ARRET_OPPOSEE)
+
+    def dessiner_opposee(self, p):
+        i = int(self.indice_oppose)
+        x, y = self.trajet_oppose[i]
+        avant = self.trajet_oppose[min(i + 3, len(self.trajet_oppose) - 1)]
+        arriere = self.trajet_oppose[max(i - 3, 0)]
+        angle = math.degrees(math.atan2(avant[1] - arriere[1], avant[0] - arriere[0]))
+        self.dessiner_voiture_orientee(p, x, y, angle, QColor(160, 90, 190))
+
+    def dessiner_voiture_orientee(self, p, x, y, angle, couleur):
+        p.save()
+        p.translate(x, y)
+        p.rotate(angle)
+        self.dessiner_voiture(p, -23, -11, 46, 22, couleur)
+        p.restore()
+
+    def dessiner_suiveuse(self, p):
+        trace = list(self.trace)
+        parcouru = 0
+        i = len(trace) - 1
+        while i > 0 and parcouru < DISTANCE_SUIVEUSE:
+            parcouru += math.dist(trace[i], trace[i - 1])
+            i -= 1
+        x, y = trace[i]
+        suivant = trace[min(i + 5, len(trace) - 1)]
+        angle = math.degrees(math.atan2(suivant[1] - y, suivant[0] - x))
+        self.dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
 
     def dessiner_arbre(self, p, x, y):
         p.setPen(Qt.NoPen)
@@ -182,6 +250,10 @@ class Carte(QWidget):
         for id_feu in FEUX:
             self.dessiner_feu(p, id_feu)
         self.dessiner_ondes(p)
+        for x, y, angle, couleur in VOITURES_ARRETEES:
+            self.dessiner_voiture_orientee(p, x, y, angle, couleur)
+        self.dessiner_suiveuse(p)
+        self.dessiner_opposee(p)
         self.dessiner_ambulance(p)
         self.dessiner_legende(p)
 
@@ -255,6 +327,8 @@ class Carte(QWidget):
             self.angle = math.degrees(math.atan2(dy, dx))
         self.ambulance_x = x
         self.ambulance_y = y
+        self.trace.append((x, y))
+        del self.trace[:-400]
 
     def ajouter_onde(self):
         maintenant = time.time()
