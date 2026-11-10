@@ -72,3 +72,20 @@ def generer_trajet(pas):
             if not trajet or trajet[-1] != point_entier:
                 trajet.append(point_entier)
     return trajet
+
+def generer_trajet_retour(pas):
+    morceaux = [
+        points_arc((860, 110), 25, 0, -180, pas),
+        points_ligne((835, 110), (835, 235), pas),
+        points_arc((775, 235), 60, 0, 90, pas),
+        points_ligne((775, 295), (550, 295), pas),
+        points_arc((550, 395), 100, -90, -180, pas),
+        points_ligne((450, 395), (450, 730), pas),
+    ]
+    trajet = []
+    for morceau in morceaux:
+        for point in morceau:
+            point_entier = (round(point[0]), round(point[1]))
+            if not trajet or trajet[-1] != point_entier:
+                trajet.append(point_entier)
+    return trajet
