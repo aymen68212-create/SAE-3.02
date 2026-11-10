@@ -11,6 +11,7 @@ FREQUENCE_POSITION = 20
 VITESSE_ONDE = 220
 PORTEE_ONDE = 280
 INTERVALLE_ONDE = 0.7
+POINT_ARRET = (885, 110)
 
 FEUX = {
     "sud_droite": {"x": 612, "y": 395, "approche": "nord"},
@@ -62,7 +63,7 @@ def generer_trajet(pas):
         points_arc((605, 400), 55, 180, 270, pas),
         points_ligne((605, 345), (830, 345), pas),
         points_arc((830, 290), 55, 90, 0, pas),
-        points_ligne((885, 290), (885, -30), pas),
+        points_ligne((885, 290), POINT_ARRET, pas),
     ]
     trajet = []
     for morceau in morceaux:
