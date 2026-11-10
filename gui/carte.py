@@ -8,14 +8,11 @@ from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
 from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
+from gui.vehicules import VOITURES_ARRETEES, dessiner_voiture, dessiner_voiture_orientee
 
 DISTANCE_SUIVEUSE = 70
 VITESSE_VOITURE = 90
 LIGNE_ARRET_OPPOSEE = 665
-VOITURES_ARRETEES = [
-    (450, 200, 90, QColor(60, 110, 200)),
-    (340, 350, -26.6, QColor(220, 170, 40)),
-]
 
 FOND = QColor(244, 239, 226)
 
@@ -57,18 +54,10 @@ class Carte(QWidget):
         dessiner_noms(p)
         for x, y in ARBRES:
             dessiner_arbre(p, x, y)
-        self.dessiner_voiture(p, 70, 60, 46, 22, QColor(250, 250, 250))
-        self.dessiner_voiture(p, 70, 138, 46, 22, QColor(250, 250, 250))
-        self.dessiner_voiture(p, 940, 58, 42, 20, QColor(250, 250, 250))
-        self.dessiner_voiture(p, 940, 110, 42, 20, QColor(250, 250, 250))
-
-    def dessiner_voiture(self, p, x, y, l, h, couleur):
-        p.setPen(QPen(QColor(150, 150, 150), 1))
-        p.setBrush(couleur)
-        p.drawRoundedRect(QRectF(x, y, l, h), 6, 6)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(40, 50, 70))
-        p.drawRoundedRect(QRectF(x + l * 0.3, y + 3, l * 0.38, h - 6), 3, 3)
+        dessiner_voiture(p, 70, 60, 46, 22, QColor(250, 250, 250))
+        dessiner_voiture(p, 70, 138, 46, 22, QColor(250, 250, 250))
+        dessiner_voiture(p, 940, 58, 42, 20, QColor(250, 250, 250))
+        dessiner_voiture(p, 940, 110, 42, 20, QColor(250, 250, 250))
 
     def generer_trajet_oppose(self):
         trajet = []
@@ -104,14 +93,7 @@ class Carte(QWidget):
         avant = self.trajet_oppose[min(i + 3, len(self.trajet_oppose) - 1)]
         arriere = self.trajet_oppose[max(i - 3, 0)]
         angle = math.degrees(math.atan2(avant[1] - arriere[1], avant[0] - arriere[0]))
-        self.dessiner_voiture_orientee(p, x, y, angle, QColor(160, 90, 190))
-
-    def dessiner_voiture_orientee(self, p, x, y, angle, couleur):
-        p.save()
-        p.translate(x, y)
-        p.rotate(angle)
-        self.dessiner_voiture(p, -23, -11, 46, 22, couleur)
-        p.restore()
+        dessiner_voiture_orientee(p, x, y, angle, QColor(160, 90, 190))
 
     def dessiner_suiveuse(self, p):
         trace = list(self.trace)
@@ -123,7 +105,7 @@ class Carte(QWidget):
         x, y = trace[i]
         suivant = trace[min(i + 5, len(trace) - 1)]
         angle = math.degrees(math.atan2(suivant[1] - y, suivant[0] - x))
-        self.dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
+        dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -133,7 +115,7 @@ class Carte(QWidget):
             self.dessiner_feu(p, id_feu)
         self.dessiner_ondes(p)
         for x, y, angle, couleur in VOITURES_ARRETEES:
-            self.dessiner_voiture_orientee(p, x, y, angle, couleur)
+            dessiner_voiture_orientee(p, x, y, angle, couleur)
         self.dessiner_suiveuse(p)
         self.dessiner_opposee(p)
         self.dessiner_ambulance(p)
