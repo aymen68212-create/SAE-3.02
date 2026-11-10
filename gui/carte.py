@@ -3,10 +3,11 @@ import math
 import time
 import threading
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QPainterPath, QFont
+from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QFont
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
 from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
-from gui.decor import MARQUAGE, BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre
+from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
+                       dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
 
 DISTANCE_SUIVEUSE = 70
 VITESSE_VOITURE = 90
@@ -17,24 +18,6 @@ VOITURES_ARRETEES = [
 ]
 
 FOND = QColor(244, 239, 226)
-ROUTE = QColor(76, 78, 84)
-TROTTOIR = QColor(196, 196, 199)
-
-
-def chaussees():
-    chemin = QPainterPath()
-    chemin.setFillRule(Qt.WindingFill)
-    chemin.addRect(400, 0, 200, HAUTEUR)
-    chemin.addRect(600, 270, 310, 100)
-    chemin.addRect(810, 0, 100, 370)
-    diagonale = QPainterPath()
-    diagonale.moveTo(400, 270)
-    diagonale.lineTo(400, 370)
-    diagonale.lineTo(0, 570)
-    diagonale.lineTo(0, 470)
-    diagonale.closeSubpath()
-    chemin.addPath(diagonale)
-    return chemin.simplified()
 
 
 class Carte(QWidget):
@@ -68,12 +51,10 @@ class Carte(QWidget):
             dessiner_batiment(p, x, y, l, h, couleur)
         dessiner_parking(p, 20, 20, 110, 250)
         dessiner_parking(p, 925, 30, 70, 160)
-        route = chaussees()
-        p.strokePath(route, QPen(TROTTOIR, 22, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
-        p.fillPath(route, ROUTE)
-        self.dessiner_marquages(p)
-        self.dessiner_passages(p)
-        self.dessiner_noms(p)
+        dessiner_routes(p)
+        dessiner_marquages(p)
+        dessiner_passages(p)
+        dessiner_noms(p)
         for x, y in ARBRES:
             dessiner_arbre(p, x, y)
         self.dessiner_voiture(p, 70, 60, 46, 22, QColor(250, 250, 250))
@@ -143,49 +124,6 @@ class Carte(QWidget):
         suivant = trace[min(i + 5, len(trace) - 1)]
         angle = math.degrees(math.atan2(suivant[1] - y, suivant[0] - x))
         self.dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
-
-    def dessiner_marquages(self, p):
-        pointillees = QPen(MARQUAGE, 2)
-        pointillees.setDashPattern([7, 9])
-        p.setPen(pointillees)
-        for x in (450, 500, 550):
-            p.drawLine(x, 0, x, 248)
-            p.drawLine(x, 394, x, HAUTEUR)
-        p.drawLine(388, 322, 0, 516)
-        p.drawLine(622, 320, 860, 320)
-        p.drawLine(860, 320, 860, 0)
-
-    def dessiner_passages(self, p):
-        p.setPen(Qt.NoPen)
-        p.setBrush(MARQUAGE)
-        for x in range(410, 592, 18):
-            p.drawRect(x, 250, 10, 18)
-            p.drawRect(x, 374, 10, 18)
-        for y in range(280, 362, 16):
-            p.drawRect(402, y, 18, 9)
-            p.drawRect(606, y, 18, 9)
-
-    def dessiner_noms(self, p):
-        p.setPen(QColor(255, 255, 255))
-        p.setFont(QFont("Arial", 13, QFont.Bold))
-        p.save()
-        p.translate(582, 90)
-        p.rotate(90)
-        p.drawText(0, 0, "Av. d'Alsace")
-        p.restore()
-        p.setFont(QFont("Arial", 11, QFont.Bold))
-        p.drawText(660, 306, "Rue des Jardins")
-        p.save()
-        p.translate(842, 230)
-        p.rotate(-90)
-        p.drawText(0, 0, "Rue des Jardins")
-        p.restore()
-        p.setPen(QPen(QColor(120, 100, 0), 1))
-        p.setBrush(QColor(250, 205, 20))
-        p.drawRoundedRect(QRectF(455, 60, 42, 20), 4, 4)
-        p.setPen(QColor(30, 30, 30))
-        p.setFont(QFont("Arial", 9, QFont.Bold))
-        p.drawText(QRectF(455, 60, 42, 20), Qt.AlignCenter, "D201")
 
     def paintEvent(self, event):
         p = QPainter(self)

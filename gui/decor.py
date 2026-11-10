@@ -1,6 +1,9 @@
-from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont
 from PyQt5.QtCore import Qt, QPointF, QRectF
+from parametres import HAUTEUR
 
+ROUTE = QColor(76, 78, 84)
+TROTTOIR = QColor(196, 196, 199)
 MARQUAGE = QColor(245, 245, 245)
 PARKING = QColor(156, 156, 161)
 
@@ -61,3 +64,71 @@ def dessiner_arbre(p, x, y):
     p.setPen(Qt.NoPen)
     p.setBrush(QColor(105, 150, 80))
     p.drawEllipse(QPointF(x - 3, y - 3), 5, 5)
+
+
+def chaussees():
+    chemin = QPainterPath()
+    chemin.setFillRule(Qt.WindingFill)
+    chemin.addRect(400, 0, 200, HAUTEUR)
+    chemin.addRect(600, 270, 310, 100)
+    chemin.addRect(810, 0, 100, 370)
+    diagonale = QPainterPath()
+    diagonale.moveTo(400, 270)
+    diagonale.lineTo(400, 370)
+    diagonale.lineTo(0, 570)
+    diagonale.lineTo(0, 470)
+    diagonale.closeSubpath()
+    chemin.addPath(diagonale)
+    return chemin.simplified()
+
+
+def dessiner_routes(p):
+    route = chaussees()
+    p.strokePath(route, QPen(TROTTOIR, 22, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
+    p.fillPath(route, ROUTE)
+
+
+def dessiner_marquages(p):
+    pointillees = QPen(MARQUAGE, 2)
+    pointillees.setDashPattern([7, 9])
+    p.setPen(pointillees)
+    for x in (450, 500, 550):
+        p.drawLine(x, 0, x, 248)
+        p.drawLine(x, 394, x, HAUTEUR)
+    p.drawLine(388, 322, 0, 516)
+    p.drawLine(622, 320, 860, 320)
+    p.drawLine(860, 320, 860, 0)
+
+
+def dessiner_passages(p):
+    p.setPen(Qt.NoPen)
+    p.setBrush(MARQUAGE)
+    for x in range(410, 592, 18):
+        p.drawRect(x, 250, 10, 18)
+        p.drawRect(x, 374, 10, 18)
+    for y in range(280, 362, 16):
+        p.drawRect(402, y, 18, 9)
+        p.drawRect(606, y, 18, 9)
+
+
+def dessiner_noms(p):
+    p.setPen(QColor(255, 255, 255))
+    p.setFont(QFont("Arial", 13, QFont.Bold))
+    p.save()
+    p.translate(582, 90)
+    p.rotate(90)
+    p.drawText(0, 0, "Av. d'Alsace")
+    p.restore()
+    p.setFont(QFont("Arial", 11, QFont.Bold))
+    p.drawText(660, 306, "Rue des Jardins")
+    p.save()
+    p.translate(842, 230)
+    p.rotate(-90)
+    p.drawText(0, 0, "Rue des Jardins")
+    p.restore()
+    p.setPen(QPen(QColor(120, 100, 0), 1))
+    p.setBrush(QColor(250, 205, 20))
+    p.drawRoundedRect(QRectF(455, 60, 42, 20), 4, 4)
+    p.setPen(QColor(30, 30, 30))
+    p.setFont(QFont("Arial", 9, QFont.Bold))
+    p.drawText(QRectF(455, 60, 42, 20), Qt.AlignCenter, "D201")
