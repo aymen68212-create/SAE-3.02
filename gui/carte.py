@@ -18,7 +18,7 @@ VOITURES_ARRETEES = [
 
 FOND = QColor(244, 239, 226)
 ROUTE = QColor(76, 78, 84)
-
+TROTTOIR = QColor(196, 196, 199)
 
 
 def chaussees():
