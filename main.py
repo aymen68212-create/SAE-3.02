@@ -25,11 +25,11 @@ def lancer_ambulance(carte, infrastructure_prete):
     infrastructure_prete.wait()
     time.sleep(1)
     trajet = generer_trajet(VITESSE_AMBULANCE / FREQUENCE_POSITION)
-    ambulance = Ambulance(trajet)
+    ambulance = Ambulance()
     ambulance.callback_position = carte.mettre_a_jour_ambulance
     ambulance.callback_onde = carte.ajouter_onde
     ambulance.connecter()
-    ambulance.deplacer()
+    ambulance.deplacer(trajet)
     ambulance.terminer()
 
 

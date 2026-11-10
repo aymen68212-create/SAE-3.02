@@ -5,8 +5,7 @@ from parametres import HOTE, PORT, INTERVALLE_ONDE, FREQUENCE_POSITION, cap_depu
 
 
 class Ambulance:
-    def __init__(self, trajet):
-        self.trajet = trajet
+    def __init__(self):
         self.position = None
         self.cap = "nord"
         self.connexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,9 +41,9 @@ class Ambulance:
         x, y = self.get_position()
         self.envoyer({"type": "onde", "x": x, "y": y, "cap": self.get_cap()})
 
-    def deplacer(self):
+    def deplacer(self, trajet):
         derniere_onde = 0
-        for x, y in self.trajet:
+        for x, y in trajet:
             self.envoyer_position(x, y)
             if self.callback_position:
                 self.callback_position(x, y)
@@ -64,7 +63,7 @@ class Ambulance:
 if __name__ == "__main__":
     from parametres import VITESSE_AMBULANCE, generer_trajet
 
-    ambulance = Ambulance(generer_trajet(VITESSE_AMBULANCE / FREQUENCE_POSITION))
+    ambulance = Ambulance()
     ambulance.connecter()
-    ambulance.deplacer()
+    ambulance.deplacer(generer_trajet(VITESSE_AMBULANCE / FREQUENCE_POSITION))
     ambulance.terminer()
