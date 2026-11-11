@@ -2,7 +2,7 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import Qt, QRectF, QPointF
 
 
-def dessiner_lit(p, x, y, angle):
+def dessiner_lit(p, x, y, angle, avec_patient=True):
     p.save()
     p.translate(x, y)
     p.rotate(angle)
@@ -14,6 +14,15 @@ def dessiner_lit(p, x, y, angle):
     p.drawRoundedRect(QRectF(-18, -6, 36, 12), 2, 2)
     p.setBrush(QColor(255, 255, 255))
     p.drawRoundedRect(QRectF(-17, -4.5, 8, 9), 2, 2)
+    if avec_patient:
+        p.setBrush(QColor(235, 190, 150))
+        p.drawEllipse(QPointF(-12, 0), 5, 5)
+        p.setBrush(QColor(120, 170, 210))
+        p.drawRoundedRect(QRectF(-7, -4.5, 17, 9), 3, 3)
+        p.setBrush(QColor(255, 255, 255))
+        p.drawRect(QRectF(10, -2.5, 8, 5))
+        p.setBrush(QColor(200, 40, 40))
+        p.drawEllipse(QPointF(14, 0), 1.3, 1.3)
     p.setPen(QPen(QColor(120, 125, 135), 1.2))
     p.drawLine(QPointF(-16, -7), QPointF(16, -7))
     p.drawLine(QPointF(-16, 7), QPointF(16, 7))
