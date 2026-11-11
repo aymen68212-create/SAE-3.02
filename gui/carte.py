@@ -9,7 +9,7 @@ from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
 from gui.vehicules import VOITURES_ARRETEES, dessiner_voiture, dessiner_voiture_orientee
-from gui.lit import dessiner_lit
+from gui.lit import Lit
 
 DISTANCE_SUIVEUSE = 70
 VITESSE_VOITURE = 90
@@ -29,6 +29,7 @@ class Carte(QWidget):
         self.feux = etats_initiaux()
         self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
         self.ondes = []
+        self.lit = Lit()
         self.verrou = threading.Lock()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
         peintre = QPainter(self.fond)
@@ -119,7 +120,7 @@ class Carte(QWidget):
             dessiner_voiture_orientee(p, x, y, angle, couleur)
         self.dessiner_suiveuse(p)
         self.dessiner_opposee(p)
-        dessiner_lit(p, 958, 170, 180)
+        self.lit.dessiner(p)
         self.dessiner_ambulance(p)
         self.dessiner_legende(p)
 
