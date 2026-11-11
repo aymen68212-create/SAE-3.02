@@ -2,7 +2,7 @@ import threading
 import time
 import sys
 from PyQt5.QtWidgets import QApplication
-from parametres import PORT, VITESSE_AMBULANCE, FREQUENCE_POSITION, generer_trajet
+from parametres import PORT, VITESSE_AMBULANCE, FREQUENCE_POSITION, generer_trajet, generer_trajet_retour
 from server.server import Serveur
 from client.ambulance import Ambulance
 from client.infrastructure import Infrastructure
@@ -21,15 +21,24 @@ def lancer_infrastructure(carte, infrastructure_prete):
     infrastructure.ecouter()
 
 
+def attendre_embarquement():
+    time.sleep(5)
+
+
 def lancer_ambulance(carte, infrastructure_prete):
     infrastructure_prete.wait()
     time.sleep(1)
-    trajet = generer_trajet(VITESSE_AMBULANCE / FREQUENCE_POSITION)
+    pas = VITESSE_AMBULANCE / FREQUENCE_POSITION
+    trajet_aller = generer_trajet(pas)
     ambulance = Ambulance()
     ambulance.callback_position = carte.mettre_a_jour_ambulance
     ambulance.callback_onde = carte.ajouter_onde
     ambulance.connecter()
-    ambulance.deplacer(trajet)
+    ambulance.deplacer(trajet_aller)
+    ambulance.signaler_arret()
+    attendre_embarquement()
+    ambulance.signaler_embarquement()
+    ambulance.deplacer(generer_trajet_retour(pas))
     ambulance.terminer()
 
 
