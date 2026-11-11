@@ -41,6 +41,13 @@ class Ambulance:
         x, y = self.get_position()
         self.envoyer({"type": "onde", "x": x, "y": y, "cap": self.get_cap()})
 
+    def signaler_arret(self):
+        x, y = self.get_position()
+        self.envoyer({"type": "arret", "x": x, "y": y})
+
+    def signaler_embarquement(self):
+        self.envoyer({"type": "patient_embarque"})
+
     def deplacer(self, trajet):
         derniere_onde = 0
         for x, y in trajet:
