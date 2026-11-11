@@ -92,6 +92,16 @@ class Serveur:
             with self.verrou:
                 self.ondes.append(time.time())
             self.db.inserer_evenement("onde_ambulance", message.get("x"), message.get("y"))
+        elif type_message == "arret":
+            self.db.inserer_evenement("arret_ambulance", message.get("x"), message.get("y"))
+            print("Ambulance arrêtée")
+        elif type_message == "patient_embarque":
+            with self.verrou:
+                position = self.position_ambulance
+            if position is None:
+                position = (0, 0)
+            self.db.inserer_evenement("patient_embarque", position[0], position[1])
+            print("Patient embarqué")
         elif type_message == "arrivee":
             self.reinitialiser()
 
