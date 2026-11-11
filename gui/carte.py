@@ -9,6 +9,7 @@ from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
 from gui.vehicules import VOITURES_ARRETEES, dessiner_voiture, dessiner_voiture_orientee
+from gui.lit import dessiner_lit
 
 DISTANCE_SUIVEUSE = 70
 VITESSE_VOITURE = 90
@@ -118,6 +119,7 @@ class Carte(QWidget):
             dessiner_voiture_orientee(p, x, y, angle, couleur)
         self.dessiner_suiveuse(p)
         self.dessiner_opposee(p)
+        dessiner_lit(p, 958, 170, 180)
         self.dessiner_ambulance(p)
         self.dessiner_legende(p)
 
