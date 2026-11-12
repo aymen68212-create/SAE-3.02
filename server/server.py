@@ -4,7 +4,7 @@ import threading
 import time
 import math
 from server.database import Database
-from parametres import HOTE, PORT, FEUX, FEU_AMBULANCE, PAIRE_AMBULANCE,VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
+from parametres import HOTE, PORT, FEUX, FEU_AMBULANCE, PAIRE_AMBULANCE, FEU_RETOUR, PAIRE_RETOUR, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
 
 
 class Serveur:
@@ -22,6 +22,7 @@ class Serveur:
         self.ondes = []
         self.etat_feux = etats_initiaux()
         self.phase = "attente"
+        self.trajet = "aller"
         self.compteur_positions = 0
 
     def get_port(self):
@@ -102,6 +103,7 @@ class Serveur:
                 position = (0, 0)
             self.db.inserer_evenement("patient_embarque", position[0], position[1])
             print("Patient embarqué")
+            self.demarrer_retour()
         elif type_message == "arrivee":
             self.reinitialiser()
 
@@ -120,7 +122,7 @@ class Serveur:
             if position is None:
                 return
             rayon = (maintenant - self.ondes[0]) * VITESSE_ONDE if self.ondes else 0
-            distance = self.distance(position, FEUX[FEU_AMBULANCE])
+            distance = self.distance(position, FEUX[self.feu_courant()])
             if self.phase == "attente" and distance <= rayon:
                 self.phase = "passage"
             elif self.phase == "passage" and distance > PORTEE_ONDE:
@@ -134,8 +136,14 @@ class Serveur:
         for id_feu, etat, position in changements:
             self.signaler_feu(id_feu, etat, position)
 
+    def feu_courant(self):
+        return FEU_RETOUR if self.trajet == "retour" else FEU_AMBULANCE
+
+    def paire_courante(self):
+        return PAIRE_RETOUR if self.trajet == "retour" else PAIRE_AMBULANCE
+
     def etat_voulu(self, id_feu):
-        if id_feu in PAIRE_AMBULANCE:
+        if id_feu in self.paire_courante():
             return "vert" if self.phase == "passage" else "rouge"
         return "rouge" if self.phase == "passage" else "vert"
 
@@ -157,8 +165,23 @@ class Serveur:
             except OSError:
                 pass
 
+    def demarrer_retour(self):
+        with self.verrou:
+            self.trajet = "retour"
+            self.phase = "attente"
+            changements = []
+            for id_feu in FEUX:
+                nouveau = self.etat_voulu(id_feu)
+                if nouveau != self.etat_feux[id_feu]:
+                    self.etat_feux[id_feu] = nouveau
+                    changements.append((id_feu, nouveau))
+            position = self.position_ambulance or (0, 0)
+        for id_feu, etat in changements:
+            self.signaler_feu(id_feu, etat, position)
+
     def reinitialiser(self):
         with self.verrou:
+            self.trajet = "aller"
             self.position_ambulance = None
             self.cap_ambulance = None
             self.ondes = []
