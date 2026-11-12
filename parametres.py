@@ -23,6 +23,8 @@ FEUX = {
 
 FEU_AMBULANCE = "sud_droite"
 PAIRE_AMBULANCE = ("sud_droite", "nord_gauche")
+FEU_RETOUR = "sud_gauche"
+PAIRE_RETOUR = ("sud_gauche", "nord_droite")
 
 
 def etats_initiaux():
