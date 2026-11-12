@@ -127,15 +127,17 @@ class Serveur:
                 self.phase = "apres"
             for id_feu in FEUX:
                 actuel = self.etat_feux[id_feu]
-                if id_feu in PAIRE_AMBULANCE:
-                    nouveau = "vert" if self.phase == "passage" else "rouge"
-                else:
-                    nouveau = "rouge" if self.phase == "passage" else "vert"
+                nouveau = self.etat_voulu(id_feu)
                 if nouveau != actuel:
                     self.etat_feux[id_feu] = nouveau
                     changements.append((id_feu, nouveau, position))
         for id_feu, etat, position in changements:
             self.signaler_feu(id_feu, etat, position)
+
+    def etat_voulu(self, id_feu):
+        if id_feu in PAIRE_AMBULANCE:
+            return "vert" if self.phase == "passage" else "rouge"
+        return "rouge" if self.phase == "passage" else "vert"
 
     def distance(self, position, feu):
         return math.hypot(position[0] - feu["x"], position[1] - feu["y"])
