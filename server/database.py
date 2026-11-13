@@ -48,6 +48,13 @@ class Database:
                 horodatage TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        curseur.execute("""
+            CREATE TABLE IF NOT EXISTS missions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                debut TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fin TIMESTAMP NULL
+            )
+        """)
 
     def inserer_evenement(self, type_evenement, x, y):
         if self.connexion is None:
