@@ -97,6 +97,21 @@ class Database:
             except mariadb.Error as e:
                 print(f"[DB] Erreur fin de mission : {e}")
 
+    def derniers_evenements(self, limite):
+        if self.connexion is None:
+            return []
+        with self.verrou:
+            try:
+                curseur = self.connexion.cursor()
+                curseur.execute(
+                    "SELECT id, type_evenement, position_x, position_y, horodatage FROM evenements ORDER BY id DESC LIMIT ?",
+                    (limite,)
+                )
+                return curseur.fetchall()
+            except mariadb.Error as e:
+                print(f"[DB] Erreur lecture : {e}")
+                return []
+
     def fermer(self):
         if self.connexion:
             self.connexion.close()
