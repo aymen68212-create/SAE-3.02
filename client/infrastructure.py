@@ -16,7 +16,11 @@ class Infrastructure:
         self.etat_feu[id_feu] = etat
 
     def connecter(self):
-        self.connexion.connect((HOTE, PORT))
+        try:
+            self.connexion.connect((HOTE, PORT))
+        except ConnectionRefusedError:
+            print("Impossible de se connecter au serveur : lancez d'abord le serveur")
+            raise
         identification = {"type": "identification", "role": "infrastructure"}
         self.connexion.sendall((json.dumps(identification) + "\n").encode())
 

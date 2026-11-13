@@ -25,7 +25,11 @@ class Ambulance:
         self.cap = cap
 
     def connecter(self):
-        self.connexion.connect((HOTE, PORT))
+        try:
+            self.connexion.connect((HOTE, PORT))
+        except ConnectionRefusedError:
+            print("Impossible de se connecter au serveur : lancez d'abord le serveur")
+            raise
 
     def envoyer(self, message):
         self.connexion.sendall((json.dumps(message) + "\n").encode())
