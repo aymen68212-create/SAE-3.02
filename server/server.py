@@ -83,10 +83,13 @@ class Serveur:
             x = message.get("x")
             y = message.get("y")
             with self.verrou:
+                nouvelle_mission = self.position_ambulance is None
                 self.position_ambulance = (x, y)
                 self.cap_ambulance = message.get("cap")
                 self.compteur_positions += 1
                 enregistrer = self.compteur_positions % 10 == 1
+            if nouvelle_mission:
+                self.db.debut_mission()
             if enregistrer:
                 self.db.inserer_evenement("position_ambulance", x, y)
         elif type_message == "onde":
@@ -105,6 +108,7 @@ class Serveur:
             print("Patient embarqué")
             self.demarrer_retour()
         elif type_message == "arrivee":
+            self.db.fin_mission()
             self.reinitialiser()
 
     def superviser(self):

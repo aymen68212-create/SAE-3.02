@@ -16,6 +16,7 @@ class Database:
     def __init__(self):
         self.connexion = None
         self.verrou = threading.Lock()
+        self.mission_en_cours = None
 
     def connecter(self):
         if mariadb is None:
@@ -69,6 +70,32 @@ class Database:
                 self.connexion.commit()
             except mariadb.Error as e:
                 print(f"[DB] Erreur insertion : {e}")
+
+    def debut_mission(self):
+        if self.connexion is None:
+            return
+        with self.verrou:
+            try:
+                curseur = self.connexion.cursor()
+                curseur.execute("INSERT INTO missions () VALUES ()")
+                self.connexion.commit()
+                self.mission_en_cours = curseur.lastrowid
+            except mariadb.Error as e:
+                print(f"[DB] Erreur début de mission : {e}")
+
+    def fin_mission(self):
+        if self.connexion is None:
+            return
+        with self.verrou:
+            if self.mission_en_cours is None:
+                return
+            try:
+                curseur = self.connexion.cursor()
+                curseur.execute("UPDATE missions SET fin = NOW() WHERE id = ?", (self.mission_en_cours,))
+                self.connexion.commit()
+                self.mission_en_cours = None
+            except mariadb.Error as e:
+                print(f"[DB] Erreur fin de mission : {e}")
 
     def fermer(self):
         if self.connexion:
