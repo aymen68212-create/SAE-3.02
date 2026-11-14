@@ -1,3 +1,4 @@
+import os
 import threading
 
 try:
@@ -5,11 +6,11 @@ try:
 except ImportError:
     mariadb = None
 
-DB_HOST = "localhost"
+DB_HOST = os.environ.get("SAE_DB_HOST", "localhost")
 DB_PORT = 3306
-DB_USER = "root"
-DB_PASSWORD = "root"
-DB_NAME = "sae302"
+DB_USER = os.environ.get("SAE_DB_USER", "root")
+DB_PASSWORD = os.environ.get("SAE_DB_PASSWORD", "root")
+DB_NAME = os.environ.get("SAE_DB_NAME", "sae302")
 
 
 class Database:
