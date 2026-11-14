@@ -5,6 +5,8 @@ VITESSE_VOITURE = 90
 VOISINAGE_ANGLE = 3
 DEMI_LONGUEUR = 23
 MARGE_ARRET = 4
+DISTANCE_SECURITE = 60
+ECART_LATERAL = 15
 
 
 def trajet_depuis_morceaux(morceaux):
@@ -96,8 +98,24 @@ class Vehicule:
             return False
         return self.indice <= arret
 
-    def avancer(self, dt, feux=None):
-        if not self.actif:
+    def obstacle_devant(self, obstacles):
+        if not obstacles:
+            return False
+        x, y = self.position()
+        angle = math.radians(self.angle())
+        avant_x = math.cos(angle)
+        avant_y = math.sin(angle)
+        for ox, oy in obstacles:
+            dx = ox - x
+            dy = oy - y
+            devant = dx * avant_x + dy * avant_y
+            lateral = abs(dx * avant_y - dy * avant_x)
+            if 0 < devant < DISTANCE_SECURITE and lateral < ECART_LATERAL:
+                return True
+        return False
+
+    def avancer(self, dt, feux=None, obstacles=None):
+        if not self.actif or self.obstacle_devant(obstacles):
             return
         suivant = self.indice + dt * VITESSE_VOITURE
         if self.doit_s_arreter_au_feu(feux):

@@ -69,6 +69,50 @@ class TestVehicule(unittest.TestCase):
         v.avancer(0.5, {"f": "rouge"})
         self.assertAlmostEqual(v.indice, 125)
 
+    def test_obstacle_proche_devant_bloque(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(100, 0)])
+        self.assertEqual(self.vehicule.indice, 50)
+
+    def test_obstacle_loin_ne_bloque_pas(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(130, 0)])
+        self.assertAlmostEqual(self.vehicule.indice, 95)
+
+    def test_obstacle_derriere_ne_bloque_pas(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(20, 0)])
+        self.assertAlmostEqual(self.vehicule.indice, 95)
+
+    def test_obstacle_dans_une_autre_voie_ne_bloque_pas(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(100, 20)])
+        self.assertAlmostEqual(self.vehicule.indice, 95)
+
+    def test_obstacle_dans_la_voie_decalee_bloque(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(100, 10)])
+        self.assertEqual(self.vehicule.indice, 50)
+
+    def test_reprend_quand_l_obstacle_s_eloigne(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 50
+        self.vehicule.avancer(0.5, None, [(100, 0)])
+        self.vehicule.avancer(0.5, None, [(150, 0)])
+        self.assertAlmostEqual(self.vehicule.indice, 95)
+
+    def test_obstacle_dans_le_virage(self):
+        self.vehicule.actif = True
+        self.vehicule.indice = 250
+        x, y = self.vehicule.position()
+        self.vehicule.avancer(0.5, None, [(x, y + 40)])
+        self.assertEqual(self.vehicule.indice, 250)
+
 
 if __name__ == "__main__":
     unittest.main()
