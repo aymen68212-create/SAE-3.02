@@ -87,3 +87,46 @@ chaque message étant terminé par un retour à la ligne (`\n`). Chaque message 
 | `patient_embarque` | ambulance | serveur | aucun | Enregistré avec la dernière position connue, affiche « Patient embarqué » et passe au trajet retour (feux `FEU_RETOUR` / `PAIRE_RETOUR`). |
 | `arrivee` | ambulance | serveur | aucun | Ferme la mission en base et réinitialise le serveur : trajet `aller`, phase `attente`, feux dans leur état initial. |
 | `feu` | serveur | infrastructure | `id` (identifiant du feu), `etat` (`"rouge"` ou `"vert"`) | Envoyé à chaque changement d'état d'un feu ; l'infrastructure le transmet à l'interface. |
+
+## Base de données
+
+La base est **optionnelle** : sans le module `mariadb` ou sans serveur MariaDB joignable, l'application
+fonctionne normalement et affiche simplement un message `[DB]` ; rien n'est enregistré.
+
+Au démarrage du serveur, la base et ses tables sont créées si elles n'existent pas :
+
+- **`evenements`** : `id` (INT, clé primaire auto-incrémentée), `type_evenement` (VARCHAR(50)),
+  `position_x` (INT), `position_y` (INT), `horodatage` (TIMESTAMP, date courante par défaut).
+- **`missions`** : `id` (INT, clé primaire auto-incrémentée), `debut` (TIMESTAMP, date courante par défaut),
+  `fin` (TIMESTAMP, vide tant que la mission n'est pas terminée). Une ligne est créée à la première position
+  reçue d'une mission, et `fin` est renseignée à la réception de `arrivee`.
+
+Les identifiants de connexion se règlent avec des variables d'environnement (le port reste 3306) :
+
+| Variable | Valeur par défaut |
+|---|---|
+| `SAE_DB_HOST` | `localhost` |
+| `SAE_DB_USER` | `root` |
+| `SAE_DB_PASSWORD` | `root` |
+| `SAE_DB_NAME` | `sae302` |
+
+Pour afficher les 20 derniers événements enregistrés, depuis la racine du projet :
+
+```
+python -m server.consulter
+```
+
+Sans connexion à la base, le script affiche un message d'explication et s'arrête sans erreur.
+
+## Tests
+
+Les tests unitaires (dossier `tests/`) utilisent `unittest` et se lancent depuis la racine du projet :
+
+```
+python -m unittest
+```
+
+- `tests/test_trajets.py` : départ et arrivée des trajets aller et retour, pas de point répété et pas plus de
+  10 pixels entre deux points consécutifs.
+- `tests/test_feux.py` : état voulu de chaque feu selon la phase (`attente`, `passage`, `apres`) à l'aller
+  (`PAIRE_AMBULANCE`) et au retour (`PAIRE_RETOUR`) ; le serveur ne se connecte pas à la base avant `demarrer()`.
