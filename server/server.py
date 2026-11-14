@@ -20,6 +20,7 @@ class Serveur:
         self.position_ambulance = None
         self.cap_ambulance = None
         self.ondes = []
+        self.debut_pause = None
         self.etat_feux = etats_initiaux()
         self.phase = "attente"
         self.trajet = "aller"
@@ -96,6 +97,10 @@ class Serveur:
             with self.verrou:
                 self.ondes.append(time.time())
             self.db.inserer_evenement("onde_ambulance", message.get("x"), message.get("y"))
+        elif type_message == "pause":
+            self.mettre_en_pause()
+        elif type_message == "reprise":
+            self.reprendre()
         elif type_message == "arret":
             self.db.inserer_evenement("arret_ambulance", message.get("x"), message.get("y"))
             print("Ambulance arrêtée")
@@ -111,15 +116,28 @@ class Serveur:
             self.db.fin_mission()
             self.reinitialiser()
 
+    def mettre_en_pause(self):
+        with self.verrou:
+            if self.debut_pause is None:
+                self.debut_pause = time.time()
+
+    def reprendre(self):
+        with self.verrou:
+            if self.debut_pause is None:
+                return
+            duree = time.time() - self.debut_pause
+            self.debut_pause = None
+            self.ondes = [t + duree for t in self.ondes]
+
     def superviser(self):
         while True:
             time.sleep(0.03)
             self.mettre_a_jour_feux()
 
     def mettre_a_jour_feux(self):
-        maintenant = time.time()
         changements = []
         with self.verrou:
+            maintenant = self.debut_pause if self.debut_pause is not None else time.time()
             self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
             position = self.position_ambulance
             cap = self.cap_ambulance
@@ -189,6 +207,7 @@ class Serveur:
             self.position_ambulance = None
             self.cap_ambulance = None
             self.ondes = []
+            self.debut_pause = None
             self.compteur_positions = 0
             self.phase = "attente"
             initiaux = etats_initiaux()
