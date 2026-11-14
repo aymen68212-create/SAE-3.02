@@ -13,15 +13,24 @@ from gui.lit import Lit
 from gui.circulation import Vehicule, trajet_depuis_morceaux
 
 DISTANCE_SUIVEUSE = 70
-VITESSE_VOITURE = 90
-LIGNE_ARRET_OPPOSEE = 665
 
 FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
+COULEUR_VIOLETTE = QColor(160, 90, 190)
 
 
 def premier_indice(trajet, condition):
     return next(i for i, (x, y) in enumerate(trajet) if condition(x, y))
+
+
+def trajet_violette():
+    jardins = VOIES["jardins_ouest"]
+    return trajet_depuis_morceaux([
+        points_ligne((VOIES["branche_sud"], -30), (VOIES["branche_sud"], 235), 1),
+        points_arc((775, 235), 60, 0, 90, 1),
+        points_ligne((775, jardins), (400, jardins), 1),
+        points_ligne((400, jardins), (-30, jardins + 215), 1),
+    ])
 
 
 def trajet_bleue():
@@ -53,12 +62,10 @@ class Carte(QWidget):
         self.dessiner_decor(peintre)
         peintre.end()
         self.timer = QTimer()
-        self.timer.timeout.connect(self.avancer_opposee)
         self.timer.timeout.connect(self.avancer_circulation)
         self.timer.timeout.connect(self.avancer_lit)
         self.timer.timeout.connect(self.update)
         self.timer.start(25)
-        self.trajet_oppose = self.generer_trajet_oppose()
 
     def reinitialiser(self):
         self.ambulance_x = VOIES["avenue_nord"]
@@ -77,8 +84,6 @@ class Carte(QWidget):
         self.duree_pause = 0.0
         self.debut_pause = None
         self.bouton_pause.setText("Pause")
-        self.indice_oppose = 0.0
-        self.dernier_temps = time.time()
         self.dernier_temps_lit = time.time()
         self.dernier_temps_circulation = time.time()
         self.vehicules = self.creer_circulation()
@@ -103,7 +108,11 @@ class Carte(QWidget):
     def creer_circulation(self):
         trajet = trajet_bleue()
         ligne = premier_indice(trajet, lambda x, y: y >= 250)
-        return [Vehicule(trajet, COULEUR_BLEUE, "nord_gauche", ligne)]
+        bleue = Vehicule(trajet, COULEUR_BLEUE, "nord_gauche", ligne)
+        trajet = trajet_violette()
+        ligne = premier_indice(trajet, lambda x, y: x <= 624 and y == VOIES["jardins_ouest"])
+        violette = Vehicule(trajet, COULEUR_VIOLETTE, "nord_droite", ligne)
+        return [bleue, violette]
 
     def demarrer_circulation(self):
         self.dernier_temps_circulation = time.time()
@@ -117,31 +126,6 @@ class Carte(QWidget):
         obstacles = [(self.ambulance_x, self.ambulance_y), self.pose_suiveuse()[:2]]
         for vehicule in self.vehicules:
             vehicule.avancer(dt, self.feux, obstacles)
-
-    def generer_trajet_oppose(self):
-        trajet = []
-        morceaux = [
-            points_ligne((910, VOIES["jardins_ouest"]), (525, VOIES["jardins_ouest"]), 1),
-            points_arc((525, 395), 100, -90, -180, 1),
-            points_ligne((VOIES["avenue_sud_voiture"], 395), (VOIES["avenue_sud_voiture"], 760), 1),
-        ]
-        for morceau in morceaux:
-            for point in morceau:
-                if not trajet or trajet[-1] != point:
-                    trajet.append(point)
-        return trajet
-
-    def avancer_opposee(self):
-        maintenant = time.time()
-        pas = (maintenant - self.dernier_temps) * VITESSE_VOITURE if self.en_marche.is_set() else 0
-        self.dernier_temps = maintenant
-        suivant = self.indice_oppose + pas
-        x = self.trajet_oppose[int(self.indice_oppose)][0]
-        y = self.trajet_oppose[int(self.indice_oppose)][1]
-        avant_ligne = y == 295 and x > LIGNE_ARRET_OPPOSEE
-        if avant_ligne and self.feux["nord_droite"] == "rouge":
-            suivant = min(suivant, self.indice_ligne_arret())
-        self.indice_oppose = min(suivant, len(self.trajet_oppose) - 1)
 
     def avancer_lit(self):
         maintenant = time.time()
@@ -183,17 +167,6 @@ class Carte(QWidget):
         self.embarquement_fini.wait()
         self.portes_ouvertes = False
 
-    def indice_ligne_arret(self):
-        return next(i for i, (x, y) in enumerate(self.trajet_oppose) if x <= LIGNE_ARRET_OPPOSEE)
-
-    def dessiner_opposee(self, p):
-        i = int(self.indice_oppose)
-        x, y = self.trajet_oppose[i]
-        avant = self.trajet_oppose[min(i + 3, len(self.trajet_oppose) - 1)]
-        arriere = self.trajet_oppose[max(i - 3, 0)]
-        angle = math.degrees(math.atan2(avant[1] - arriere[1], avant[0] - arriere[0]))
-        dessiner_voiture_orientee(p, x, y, angle, QColor(160, 90, 190))
-
     def pose_suiveuse(self):
         trace = list(self.trace)
         parcouru = 0
@@ -222,7 +195,6 @@ class Carte(QWidget):
         for vehicule in self.vehicules:
             vehicule.dessiner(p)
         self.dessiner_suiveuse(p)
-        self.dessiner_opposee(p)
         self.lit.dessiner(p)
         self.dessiner_ambulance(p)
         self.dessiner_legende(p)
