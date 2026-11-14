@@ -28,9 +28,13 @@ class Carte(QWidget):
         self.en_marche = threading.Event()
         self.callback_pause = None
         self.callback_reprise = None
+        self.callback_rejouer = None
         self.bouton_pause = QPushButton("Pause", self)
         self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
         self.bouton_pause.clicked.connect(self.basculer_pause)
+        self.bouton_rejouer = QPushButton("Rejouer", self)
+        self.bouton_rejouer.setGeometry(128, HAUTEUR - 96, 110, 26)
+        self.bouton_rejouer.clicked.connect(self.rejouer)
         self.reinitialiser()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
         peintre = QPainter(self.fond)
@@ -134,6 +138,10 @@ class Carte(QWidget):
             self.bouton_pause.setText("Pause")
             if self.callback_reprise:
                 self.callback_reprise()
+
+    def rejouer(self):
+        if self.callback_rejouer:
+            self.callback_rejouer()
 
     def jouer_embarquement(self):
         self.embarquement_fini.clear()

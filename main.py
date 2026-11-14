@@ -41,6 +41,23 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance.terminer()
 
 
+def lancer_mission(carte, infrastructure_prete, verrou_mission):
+    try:
+        lancer_ambulance(carte, infrastructure_prete)
+    finally:
+        verrou_mission.release()
+
+
+def demarrer_mission(carte, infrastructure_prete, verrou_mission, remettre_a_zero):
+    if not verrou_mission.acquire(blocking=False):
+        return False
+    if remettre_a_zero:
+        carte.reinitialiser()
+    thread_ambulance = threading.Thread(target=lancer_mission, args=(carte, infrastructure_prete, verrou_mission), daemon=True)
+    thread_ambulance.start()
+    return True
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     carte = Carte()
@@ -56,7 +73,8 @@ if __name__ == "__main__":
     thread_infrastructure = threading.Thread(target=lancer_infrastructure, args=(carte, infrastructure_prete), daemon=True)
     thread_infrastructure.start()
 
-    thread_ambulance = threading.Thread(target=lancer_ambulance, args=(carte, infrastructure_prete), daemon=True)
-    thread_ambulance.start()
+    verrou_mission = threading.Lock()
+    carte.callback_rejouer = lambda: demarrer_mission(carte, infrastructure_prete, verrou_mission, True)
+    demarrer_mission(carte, infrastructure_prete, verrou_mission, False)
 
     sys.exit(app.exec_())
