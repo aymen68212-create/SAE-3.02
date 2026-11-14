@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
 from parametres import LARGEUR, HAUTEUR, VOIES, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
-from gui.vehicules import VOITURES_ARRETEES, dessiner_voiture, dessiner_voiture_orientee
+from gui.vehicules import dessiner_voiture, dessiner_voiture_orientee
 from gui.lit import Lit
 from gui.circulation import Vehicule, trajet_depuis_morceaux
 
@@ -17,6 +17,7 @@ DISTANCE_SUIVEUSE = 70
 FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
 COULEUR_VIOLETTE = QColor(160, 90, 190)
+COULEUR_TAXI = QColor(220, 170, 40)
 
 
 def premier_indice(trajet, condition):
@@ -30,6 +31,16 @@ def trajet_violette():
         points_arc((775, 235), 60, 0, 90, 1),
         points_ligne((775, jardins), (400, jardins), 1),
         points_ligne((400, jardins), (-30, jardins + 215), 1),
+    ])
+
+
+def trajet_taxi():
+    jardins = VOIES["jardins_est"]
+    return trajet_depuis_morceaux([
+        points_ligne((-30, jardins + 215), (400, jardins), 1),
+        points_ligne((400, jardins), (830, jardins), 1),
+        points_arc((830, 290), 55, 90, 0, 1),
+        points_ligne((VOIES["branche_nord"], 290), (VOIES["branche_nord"], -30), 1),
     ])
 
 
@@ -112,7 +123,10 @@ class Carte(QWidget):
         trajet = trajet_violette()
         ligne = premier_indice(trajet, lambda x, y: x <= 624 and y == VOIES["jardins_ouest"])
         violette = Vehicule(trajet, COULEUR_VIOLETTE, "nord_droite", ligne)
-        return [bleue, violette]
+        trajet = trajet_taxi()
+        ligne = premier_indice(trajet, lambda x, y: x >= 402)
+        taxi = Vehicule(trajet, COULEUR_TAXI, "sud_gauche", ligne)
+        return [bleue, violette, taxi]
 
     def demarrer_circulation(self):
         self.dernier_temps_circulation = time.time()
@@ -190,8 +204,6 @@ class Carte(QWidget):
         for id_feu in FEUX:
             self.dessiner_feu(p, id_feu)
         self.dessiner_ondes(p)
-        for x, y, angle, couleur in VOITURES_ARRETEES:
-            dessiner_voiture_orientee(p, x, y, angle, couleur)
         for vehicule in self.vehicules:
             vehicule.dessiner(p)
         self.dessiner_suiveuse(p)

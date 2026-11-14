@@ -1,10 +1,6 @@
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import Qt, QRectF
 
-VOITURES_ARRETEES = [
-    (340, 350, -26.6, QColor(220, 170, 40)),
-]
-
 
 def dessiner_voiture(p, x, y, l, h, couleur):
     p.setPen(QPen(QColor(150, 150, 150), 1))
