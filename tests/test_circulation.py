@@ -1,6 +1,6 @@
 import unittest
 from PyQt5.QtGui import QColor
-from gui.circulation import Vehicule, trajet_depuis_morceaux, VITESSE_VOITURE
+from gui.circulation import Vehicule, trajet_depuis_morceaux, VITESSE_VOITURE, DEMI_LONGUEUR
 from parametres import points_ligne
 
 
@@ -39,16 +39,35 @@ class TestVehicule(unittest.TestCase):
         v = Vehicule(self.trajet, QColor(0, 0, 0), "f", 100)
         v.actif = True
         v.avancer(10, {"f": "rouge"})
-        self.assertEqual(v.indice, 100)
+        self.assertEqual(v.indice, 73)
         v.avancer(0.5, {"f": "vert"})
-        self.assertAlmostEqual(v.indice, 145)
+        self.assertAlmostEqual(v.indice, 118)
+
+    def test_pare_choc_avant_la_ligne(self):
+        v = Vehicule(self.trajet, QColor(0, 0, 0), "f", 100)
+        v.actif = True
+        v.avancer(10, {"f": "rouge"})
+        x_avant = v.position()[0] + DEMI_LONGUEUR
+        self.assertLess(x_avant, 100)
+
+    def test_arret_sans_ligne_ne_bloque_pas(self):
+        v = Vehicule(self.trajet, QColor(0, 0, 0), "f")
+        v.actif = True
+        v.avancer(0.5, {"f": "rouge"})
+        self.assertAlmostEqual(v.indice, 45)
+
+    def test_feu_d_une_autre_voie_ignore(self):
+        v = Vehicule(self.trajet, QColor(0, 0, 0), "f", 100)
+        v.actif = True
+        v.avancer(0.5, {"g": "rouge"})
+        self.assertAlmostEqual(v.indice, 45)
 
     def test_feu_rouge_apres_la_ligne_ignore(self):
         v = Vehicule(self.trajet, QColor(0, 0, 0), "f", 100)
         v.actif = True
-        v.indice = 120
+        v.indice = 80
         v.avancer(0.5, {"f": "rouge"})
-        self.assertAlmostEqual(v.indice, 165)
+        self.assertAlmostEqual(v.indice, 125)
 
 
 if __name__ == "__main__":

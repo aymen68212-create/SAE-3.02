@@ -3,6 +3,8 @@ from gui.vehicules import dessiner_voiture_orientee
 
 VITESSE_VOITURE = 90
 VOISINAGE_ANGLE = 3
+DEMI_LONGUEUR = 23
+MARGE_ARRET = 4
 
 
 def trajet_depuis_morceaux(morceaux):
@@ -78,13 +80,28 @@ class Vehicule:
     def termine(self):
         return self.indice >= len(self.trajet) - 1
 
+    def indice_arret(self):
+        if self.indice_ligne_arret is None:
+            return None
+        reste = DEMI_LONGUEUR + MARGE_ARRET
+        i = int(self.indice_ligne_arret)
+        while i > 0 and reste > 0:
+            reste -= math.dist(self.trajet[i], self.trajet[i - 1])
+            i -= 1
+        return i
+
+    def doit_s_arreter_au_feu(self, feux):
+        arret = self.indice_arret()
+        if arret is None or feux is None or feux.get(self.id_feu) != "rouge":
+            return False
+        return self.indice <= arret
+
     def avancer(self, dt, feux=None):
         if not self.actif:
             return
         suivant = self.indice + dt * VITESSE_VOITURE
-        arret = self.indice_ligne_arret
-        if arret is not None and feux is not None and feux.get(self.id_feu) == "rouge" and self.indice <= arret:
-            suivant = min(suivant, arret)
+        if self.doit_s_arreter_au_feu(feux):
+            suivant = min(suivant, self.indice_arret())
         self.indice = min(suivant, len(self.trajet) - 1)
 
     def dessiner(self, p):
