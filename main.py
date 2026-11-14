@@ -29,6 +29,7 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance = Ambulance()
     ambulance.callback_position = carte.mettre_a_jour_ambulance
     ambulance.callback_onde = carte.ajouter_onde
+    ambulance.en_marche = carte.en_marche
     ambulance.connecter()
     ambulance.deplacer(trajet_aller)
     ambulance.signaler_arret()

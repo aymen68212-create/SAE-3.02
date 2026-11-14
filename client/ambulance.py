@@ -11,6 +11,7 @@ class Ambulance:
         self.connexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.callback_position = None
         self.callback_onde = None
+        self.en_marche = None
 
     def get_position(self):
         return self.position
@@ -55,6 +56,8 @@ class Ambulance:
     def deplacer(self, trajet):
         derniere_onde = 0
         for x, y in trajet:
+            if self.en_marche is not None:
+                self.en_marche.wait()
             self.envoyer_position(x, y)
             if self.callback_position:
                 self.callback_position(x, y)

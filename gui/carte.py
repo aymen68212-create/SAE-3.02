@@ -2,7 +2,7 @@ import sys
 import math
 import time
 import threading
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QFont
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
 from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
@@ -33,6 +33,13 @@ class Carte(QWidget):
         self.portes_ouvertes = False
         self.lit = Lit(self.embarquement_fini)
         self.verrou = threading.Lock()
+        self.en_marche = threading.Event()
+        self.en_marche.set()
+        self.duree_pause = 0.0
+        self.debut_pause = None
+        self.bouton_pause = QPushButton("Pause", self)
+        self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
+        self.bouton_pause.clicked.connect(self.basculer_pause)
         self.fond = QPixmap(LARGEUR, HAUTEUR)
         peintre = QPainter(self.fond)
         peintre.setRenderHint(QPainter.Antialiasing)
@@ -80,7 +87,7 @@ class Carte(QWidget):
 
     def avancer_opposee(self):
         maintenant = time.time()
-        pas = (maintenant - self.dernier_temps) * VITESSE_VOITURE
+        pas = (maintenant - self.dernier_temps) * VITESSE_VOITURE if self.en_marche.is_set() else 0
         self.dernier_temps = maintenant
         suivant = self.indice_oppose + pas
         x = self.trajet_oppose[int(self.indice_oppose)][0]
@@ -94,7 +101,25 @@ class Carte(QWidget):
         maintenant = time.time()
         duree = maintenant - self.dernier_temps_lit
         self.dernier_temps_lit = maintenant
-        self.lit.avancer(duree)
+        self.lit.avancer(duree if self.en_marche.is_set() else 0)
+
+    def temps_simulation(self):
+        maintenant = time.time()
+        pause = self.duree_pause
+        if self.debut_pause is not None:
+            pause += maintenant - self.debut_pause
+        return maintenant - pause
+
+    def basculer_pause(self):
+        if self.en_marche.is_set():
+            self.debut_pause = time.time()
+            self.en_marche.clear()
+            self.bouton_pause.setText("Reprendre")
+        else:
+            self.duree_pause += time.time() - self.debut_pause
+            self.debut_pause = None
+            self.en_marche.set()
+            self.bouton_pause.setText("Pause")
 
     def jouer_embarquement(self):
         self.embarquement_fini.clear()
@@ -164,7 +189,7 @@ class Carte(QWidget):
             p.drawEllipse(QPointF(x, centre_y), 6, 6)
 
     def dessiner_ondes(self, p):
-        maintenant = time.time()
+        maintenant = self.temps_simulation()
         with self.verrou:
             ondes = list(self.ondes)
         p.setBrush(Qt.NoBrush)
@@ -221,7 +246,7 @@ class Carte(QWidget):
         del self.trace[:-400]
 
     def ajouter_onde(self):
-        maintenant = time.time()
+        maintenant = self.temps_simulation()
         with self.verrou:
             self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
             self.ondes.append(maintenant)
