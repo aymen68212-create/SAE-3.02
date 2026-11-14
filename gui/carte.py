@@ -23,25 +23,15 @@ class Carte(QWidget):
         super().__init__()
         self.setWindowTitle("Simulation Ambulance - IUT Colmar")
         self.setFixedSize(LARGEUR, HAUTEUR)
-        self.ambulance_x = 550
-        self.ambulance_y = 690
-        self.angle = -90
-        self.feux = etats_initiaux()
-        self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
-        self.ondes = []
-        self.embarquement_fini = threading.Event()
-        self.portes_ouvertes = False
-        self.lit = Lit(self.embarquement_fini)
         self.verrou = threading.Lock()
+        self.embarquement_fini = threading.Event()
         self.en_marche = threading.Event()
-        self.en_marche.set()
         self.callback_pause = None
         self.callback_reprise = None
-        self.duree_pause = 0.0
-        self.debut_pause = None
         self.bouton_pause = QPushButton("Pause", self)
         self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
         self.bouton_pause.clicked.connect(self.basculer_pause)
+        self.reinitialiser()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
         peintre = QPainter(self.fond)
         peintre.setRenderHint(QPainter.Antialiasing)
@@ -53,6 +43,24 @@ class Carte(QWidget):
         self.timer.timeout.connect(self.update)
         self.timer.start(25)
         self.trajet_oppose = self.generer_trajet_oppose()
+
+    def reinitialiser(self):
+        self.ambulance_x = 550
+        self.ambulance_y = 690
+        self.angle = -90
+        self.feux = etats_initiaux()
+        self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
+        with self.verrou:
+            self.ondes = []
+        self.embarquement_fini.clear()
+        self.portes_ouvertes = False
+        self.lit = Lit(self.embarquement_fini)
+        self.lit.visible = True
+        self.lit.actif = False
+        self.en_marche.set()
+        self.duree_pause = 0.0
+        self.debut_pause = None
+        self.bouton_pause.setText("Pause")
         self.indice_oppose = 0.0
         self.dernier_temps = time.time()
         self.dernier_temps_lit = time.time()
