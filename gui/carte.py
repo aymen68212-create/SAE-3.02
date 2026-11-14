@@ -10,9 +10,10 @@ from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, d
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
 from gui.vehicules import dessiner_voiture, dessiner_voiture_orientee
 from gui.lit import Lit
-from gui.circulation import Vehicule, trajet_depuis_morceaux
+from gui.circulation import Vehicule, trajet_depuis_morceaux, VITESSE_VOITURE
 
 DISTANCE_SUIVEUSE = 70
+X_DEMI_TOUR = 845
 
 FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
@@ -98,6 +99,9 @@ class Carte(QWidget):
         self.dernier_temps_lit = time.time()
         self.dernier_temps_circulation = time.time()
         self.vehicules = self.creer_circulation()
+        self.suiveuse_libre = False
+        self.suiveuse_visible = True
+        self.suiveuse_y = 0.0
 
     def dessiner_decor(self, p):
         p.fillRect(0, 0, LARGEUR, HAUTEUR, FOND)
@@ -133,11 +137,33 @@ class Carte(QWidget):
         for vehicule in self.vehicules:
             vehicule.actif = True
 
+    def get_suiveuse_libre(self):
+        return self.suiveuse_libre
+
+    def set_suiveuse_libre(self, libre):
+        self.suiveuse_libre = libre
+
+    def liberer_suiveuse(self):
+        self.suiveuse_y = self.pose_suiveuse()[1]
+        self.set_suiveuse_libre(True)
+
+    def avancer_suiveuse(self, dt):
+        if not self.get_suiveuse_libre():
+            if self.embarquement_fini.is_set() and self.ambulance_x < X_DEMI_TOUR:
+                self.liberer_suiveuse()
+            return
+        self.suiveuse_y -= dt * VITESSE_VOITURE
+        if self.suiveuse_y < -30:
+            self.suiveuse_visible = False
+
     def avancer_circulation(self):
         maintenant = time.time()
         dt = maintenant - self.dernier_temps_circulation if self.en_marche.is_set() else 0
         self.dernier_temps_circulation = maintenant
-        obstacles = [(self.ambulance_x, self.ambulance_y), self.pose_suiveuse()[:2]]
+        self.avancer_suiveuse(dt)
+        obstacles = [(self.ambulance_x, self.ambulance_y)]
+        if self.suiveuse_visible:
+            obstacles.append(self.pose_suiveuse()[:2])
         for vehicule in self.vehicules:
             vehicule.avancer(dt, self.feux, obstacles)
 
@@ -182,6 +208,8 @@ class Carte(QWidget):
         self.portes_ouvertes = False
 
     def pose_suiveuse(self):
+        if self.get_suiveuse_libre():
+            return VOIES["branche_nord"], self.suiveuse_y, -90
         trace = list(self.trace)
         parcouru = 0
         i = len(trace) - 1
@@ -194,6 +222,8 @@ class Carte(QWidget):
         return x, y, angle
 
     def dessiner_suiveuse(self, p):
+        if not self.suiveuse_visible:
+            return
         x, y, angle = self.pose_suiveuse()
         dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
 
