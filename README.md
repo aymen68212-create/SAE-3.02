@@ -72,3 +72,18 @@ Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation d�
 - **Base de données** (`server/database.py`) : si MariaDB est disponible, les événements sont insérés dans la
   table `evenements` (type, position x/y, horodatage) : positions de l'ambulance (une sur dix), ondes émises
   et changements d'état des feux.
+
+## Protocole des messages
+
+Les clients et le serveur échangent des messages JSON sur une connexion TCP : un message JSON par ligne,
+chaque message étant terminé par un retour à la ligne (`\n`). Chaque message contient un champ `type`.
+
+| Type | Envoyé par | Reçu par | Champs | Effet côté serveur |
+|---|---|---|---|---|
+| `identification` | infrastructure | serveur | `role` (`"infrastructure"`) | Le client est ajouté à la liste des infrastructures qui recevront les ordres `feu`. |
+| `position_ambulance` | ambulance | serveur | `x`, `y`, `cap` | Mémorise la dernière position et le cap ; la première position d'une mission ouvre une mission en base ; une position sur dix est enregistrée. |
+| `onde` | ambulance | serveur | `x`, `y`, `cap` | Démarre une onde dont le rayon grandit ; enregistrée comme `onde_ambulance`. |
+| `arret` | ambulance | serveur | `x`, `y` | Enregistré comme `arret_ambulance`, affiche « Ambulance arrêtée ». |
+| `patient_embarque` | ambulance | serveur | aucun | Enregistré avec la dernière position connue, affiche « Patient embarqué » et passe au trajet retour (feux `FEU_RETOUR` / `PAIRE_RETOUR`). |
+| `arrivee` | ambulance | serveur | aucun | Ferme la mission en base et réinitialise le serveur : trajet `aller`, phase `attente`, feux dans leur état initial. |
+| `feu` | serveur | infrastructure | `id` (identifiant du feu), `etat` (`"rouge"` ou `"vert"`) | Envoyé à chaque changement d'état d'un feu ; l'infrastructure le transmet à l'interface. |
