@@ -2,7 +2,6 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import Qt, QRectF
 
 VOITURES_ARRETEES = [
-    (425, 200, 90, QColor(60, 110, 200)),
     (340, 350, -26.6, QColor(220, 170, 40)),
 ]
 
