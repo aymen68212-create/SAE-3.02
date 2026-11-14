@@ -5,7 +5,7 @@ import threading
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QFont
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
-from parametres import LARGEUR, HAUTEUR, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
+from parametres import LARGEUR, HAUTEUR, VOIES, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
                        dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
 from gui.vehicules import VOITURES_ARRETEES, dessiner_voiture, dessiner_voiture_orientee
@@ -49,11 +49,11 @@ class Carte(QWidget):
         self.trajet_oppose = self.generer_trajet_oppose()
 
     def reinitialiser(self):
-        self.ambulance_x = 550
+        self.ambulance_x = VOIES["avenue_nord"]
         self.ambulance_y = 690
         self.angle = -90
         self.feux = etats_initiaux()
-        self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
+        self.trace = [(VOIES["avenue_nord"], y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(VOIES["avenue_nord"], 690)]
         with self.verrou:
             self.ondes = []
         self.embarquement_fini.clear()
@@ -89,9 +89,9 @@ class Carte(QWidget):
     def generer_trajet_oppose(self):
         trajet = []
         morceaux = [
-            points_ligne((910, 295), (550, 295), 1),
-            points_arc((550, 395), 100, -90, -180, 1),
-            points_ligne((450, 395), (450, 760), 1),
+            points_ligne((910, VOIES["jardins_ouest"]), (525, VOIES["jardins_ouest"]), 1),
+            points_arc((525, 395), 100, -90, -180, 1),
+            points_ligne((VOIES["avenue_sud_voiture"], 395), (VOIES["avenue_sud_voiture"], 760), 1),
         ]
         for morceau in morceaux:
             for point in morceau:

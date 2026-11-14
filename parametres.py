@@ -13,6 +13,16 @@ PORTEE_ONDE = 280
 INTERVALLE_ONDE = 0.7
 POINT_ARRET = (885, 110)
 
+VOIES = {
+    "avenue_nord": 575,
+    "avenue_sud_voiture": 425,
+    "avenue_sud_ambulance": 475,
+    "jardins_est": 345,
+    "jardins_ouest": 295,
+    "branche_nord": 885,
+    "branche_sud": 835,
+}
+
 FEUX = {
     "sud_droite": {"x": 612, "y": 395, "approche": "nord"},
     "sud_gauche": {"x": 388, "y": 395, "approche": "nord"},
@@ -61,11 +71,11 @@ def points_arc(centre, rayon, angle_depart, angle_arrivee, pas):
 
 def generer_trajet(pas):
     morceaux = [
-        points_ligne((550, 690), (550, 400), pas),
-        points_arc((605, 400), 55, 180, 270, pas),
-        points_ligne((605, 345), (830, 345), pas),
+        points_ligne((VOIES["avenue_nord"], 690), (VOIES["avenue_nord"], 400), pas),
+        points_arc((630, 400), 55, 180, 270, pas),
+        points_ligne((630, VOIES["jardins_est"]), (830, VOIES["jardins_est"]), pas),
         points_arc((830, 290), 55, 90, 0, pas),
-        points_ligne((885, 290), POINT_ARRET, pas),
+        points_ligne((VOIES["branche_nord"], 290), POINT_ARRET, pas),
     ]
     trajet = []
     for morceau in morceaux:
@@ -78,11 +88,11 @@ def generer_trajet(pas):
 def generer_trajet_retour(pas):
     morceaux = [
         points_arc((860, 110), 25, 0, -180, pas),
-        points_ligne((835, 110), (835, 235), pas),
+        points_ligne((VOIES["branche_sud"], 110), (VOIES["branche_sud"], 235), pas),
         points_arc((775, 235), 60, 0, 90, pas),
-        points_ligne((775, 295), (550, 295), pas),
-        points_arc((550, 395), 100, -90, -180, pas),
-        points_ligne((450, 395), (450, 730), pas),
+        points_ligne((775, VOIES["jardins_ouest"]), (VOIES["avenue_nord"], VOIES["jardins_ouest"]), pas),
+        points_arc((VOIES["avenue_nord"], 395), 100, -90, -180, pas),
+        points_ligne((VOIES["avenue_sud_ambulance"], 395), (VOIES["avenue_sud_ambulance"], 730), pas),
     ]
     trajet = []
     for morceau in morceaux:
