@@ -1,6 +1,7 @@
 import socket
 import json
 import time
+import threading
 from parametres import HOTE, PORT, INTERVALLE_ONDE, FREQUENCE_POSITION, cap_depuis_deplacement
 
 
@@ -12,6 +13,7 @@ class Ambulance:
         self.callback_position = None
         self.callback_onde = None
         self.en_marche = None
+        self.verrou_envoi = threading.Lock()
 
     def get_position(self):
         return self.position
@@ -33,7 +35,8 @@ class Ambulance:
             raise
 
     def envoyer(self, message):
-        self.connexion.sendall((json.dumps(message) + "\n").encode())
+        with self.verrou_envoi:
+            self.connexion.sendall((json.dumps(message) + "\n").encode())
 
     def envoyer_position(self, x, y):
         precedente = self.get_position()
@@ -52,6 +55,18 @@ class Ambulance:
 
     def signaler_embarquement(self):
         self.envoyer({"type": "patient_embarque"})
+
+    def signaler_pause(self):
+        try:
+            self.envoyer({"type": "pause"})
+        except OSError:
+            pass
+
+    def signaler_reprise(self):
+        try:
+            self.envoyer({"type": "reprise"})
+        except OSError:
+            pass
 
     def deplacer(self, trajet):
         derniere_onde = 0

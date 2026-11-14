@@ -35,6 +35,8 @@ class Carte(QWidget):
         self.verrou = threading.Lock()
         self.en_marche = threading.Event()
         self.en_marche.set()
+        self.callback_pause = None
+        self.callback_reprise = None
         self.duree_pause = 0.0
         self.debut_pause = None
         self.bouton_pause = QPushButton("Pause", self)
@@ -115,11 +117,15 @@ class Carte(QWidget):
             self.debut_pause = time.time()
             self.en_marche.clear()
             self.bouton_pause.setText("Reprendre")
+            if self.callback_pause:
+                self.callback_pause()
         else:
             self.duree_pause += time.time() - self.debut_pause
             self.debut_pause = None
             self.en_marche.set()
             self.bouton_pause.setText("Pause")
+            if self.callback_reprise:
+                self.callback_reprise()
 
     def jouer_embarquement(self):
         self.embarquement_fini.clear()

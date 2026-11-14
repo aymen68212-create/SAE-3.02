@@ -31,6 +31,8 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance.callback_onde = carte.ajouter_onde
     ambulance.en_marche = carte.en_marche
     ambulance.connecter()
+    carte.callback_pause = ambulance.signaler_pause
+    carte.callback_reprise = ambulance.signaler_reprise
     ambulance.deplacer(trajet_aller)
     ambulance.signaler_arret()
     carte.jouer_embarquement()
