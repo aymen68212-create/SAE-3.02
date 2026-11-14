@@ -29,7 +29,9 @@ class Carte(QWidget):
         self.feux = etats_initiaux()
         self.trace = [(550, y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(550, 690)]
         self.ondes = []
-        self.lit = Lit()
+        self.embarquement_fini = threading.Event()
+        self.portes_ouvertes = False
+        self.lit = Lit(self.embarquement_fini)
         self.verrou = threading.Lock()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
         peintre = QPainter(self.fond)
@@ -38,11 +40,13 @@ class Carte(QWidget):
         peintre.end()
         self.timer = QTimer()
         self.timer.timeout.connect(self.avancer_opposee)
+        self.timer.timeout.connect(self.avancer_lit)
         self.timer.timeout.connect(self.update)
         self.timer.start(25)
         self.trajet_oppose = self.generer_trajet_oppose()
         self.indice_oppose = 0.0
         self.dernier_temps = time.time()
+        self.dernier_temps_lit = time.time()
 
     def dessiner_decor(self, p):
         p.fillRect(0, 0, LARGEUR, HAUTEUR, FOND)
@@ -85,6 +89,20 @@ class Carte(QWidget):
         if avant_ligne and self.feux["nord_droite"] == "rouge":
             suivant = min(suivant, self.indice_ligne_arret())
         self.indice_oppose = min(suivant, len(self.trajet_oppose) - 1)
+
+    def avancer_lit(self):
+        maintenant = time.time()
+        duree = maintenant - self.dernier_temps_lit
+        self.dernier_temps_lit = maintenant
+        self.lit.avancer(duree)
+
+    def jouer_embarquement(self):
+        self.embarquement_fini.clear()
+        self.dernier_temps_lit = time.time()
+        self.lit.actif = True
+        self.portes_ouvertes = True
+        self.embarquement_fini.wait()
+        self.portes_ouvertes = False
 
     def indice_ligne_arret(self):
         return next(i for i, (x, y) in enumerate(self.trajet_oppose) if x <= LIGNE_ARRET_OPPOSEE)
@@ -176,6 +194,11 @@ class Carte(QWidget):
         p.drawRect(QRectF(4, -9, 4, 7))
         p.setBrush(QColor(50, 90, 255) if alternance else QColor(255, 40, 40))
         p.drawRect(QRectF(4, 2, 4, 7))
+        if self.portes_ouvertes:
+            p.setPen(QPen(QColor(40, 40, 45), 1))
+            p.setBrush(QColor(235, 235, 235))
+            p.drawRect(QRectF(-30, -11, 8, 3))
+            p.drawRect(QRectF(-30, 8, 8, 3))
         p.restore()
 
     def dessiner_legende(self, p):

@@ -35,14 +35,19 @@ def dessiner_lit(p, x, y, angle, avec_patient=True):
     p.restore()
 
 
+VITESSE_LIT = 60
+
+
 class Lit:
-    def __init__(self):
+    def __init__(self, fin=None):
         self.x = 958
         self.y = 170
         self.angle = 180
-        self.trajet = []
+        self.fin = fin
+        self.trajet = self.generer_trajet_lit()
         self.indice = 0.0
         self.visible = True
+        self.actif = False
         self.en_mouvement = False
 
     def get_position(self):
@@ -69,6 +74,24 @@ class Lit:
             if not points or math.dist(points[-1], point) > 1e-6:
                 points.append(point)
         return points
+
+    def avancer(self, duree):
+        if not self.actif:
+            return
+        self.en_mouvement = True
+        self.indice += duree * VITESSE_LIT
+        if self.indice >= len(self.trajet) - 1:
+            self.indice = len(self.trajet) - 1
+            self.x, self.y = self.trajet[-1]
+            self.visible = False
+            self.actif = False
+            self.en_mouvement = False
+            if self.fin is not None:
+                self.fin.set()
+            return
+        self.x, self.y = self.trajet[int(self.indice)]
+        suivant = self.trajet[int(self.indice) + 1]
+        self.angle = math.degrees(math.atan2(suivant[1] - self.y, suivant[0] - self.x))
 
     def dessiner(self, p):
         if self.visible:

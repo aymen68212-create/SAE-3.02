@@ -21,10 +21,6 @@ def lancer_infrastructure(carte, infrastructure_prete):
     infrastructure.ecouter()
 
 
-def attendre_embarquement():
-    time.sleep(5)
-
-
 def lancer_ambulance(carte, infrastructure_prete):
     infrastructure_prete.wait()
     time.sleep(1)
@@ -36,7 +32,7 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance.connecter()
     ambulance.deplacer(trajet_aller)
     ambulance.signaler_arret()
-    attendre_embarquement()
+    carte.jouer_embarquement()
     ambulance.signaler_embarquement()
     ambulance.deplacer(generer_trajet_retour(pas))
     ambulance.terminer()
