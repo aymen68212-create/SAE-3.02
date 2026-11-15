@@ -5,15 +5,14 @@ import threading
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QFont
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
-from parametres import LARGEUR, HAUTEUR, VOIES, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux, points_ligne, points_arc
+from parametres import (LARGEUR, HAUTEUR, VOIES, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux,
+                        points_ligne, points_arc, points_courbe)
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
-                       dessiner_routes, dessiner_marquages, dessiner_passages, dessiner_noms)
-from gui.vehicules import dessiner_voiture, dessiner_voiture_orientee
+                       dessiner_routes, dessiner_marquages, dessiner_fleches, dessiner_sens_interdit,
+                       dessiner_passages, dessiner_noms)
+from gui.vehicules import dessiner_voiture
 from gui.lit import Lit
-from gui.circulation import Vehicule, trajet_depuis_morceaux, VITESSE_VOITURE
-
-DISTANCE_SUIVEUSE = 70
-X_DEMI_TOUR = 845
+from gui.circulation import Vehicule, trajet_depuis_morceaux
 
 FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
@@ -30,15 +29,17 @@ def trajet_violette():
     return trajet_depuis_morceaux([
         points_ligne((VOIES["branche_sud"], -30), (VOIES["branche_sud"], 235), 1),
         points_arc((775, 235), 60, 0, 90, 1),
-        points_ligne((775, jardins), (400, jardins), 1),
-        points_ligne((400, jardins), (-30, jardins + 215), 1),
+        points_ligne((775, jardins), (600, jardins), 1),
+        points_arc((600, 270), 25, 90, 180, 1),
+        points_ligne((575, 270), (575, -30), 1),
     ])
 
 
 def trajet_taxi():
     jardins = VOIES["jardins_est"]
     return trajet_depuis_morceaux([
-        points_ligne((-30, jardins + 215), (400, jardins), 1),
+        points_ligne((-30, 535), (300, 370), 1),
+        points_courbe((300, 370), (350, jardins), (400, jardins), 1),
         points_ligne((400, jardins), (830, jardins), 1),
         points_arc((830, 290), 55, 90, 0, 1),
         points_ligne((VOIES["branche_nord"], 290), (VOIES["branche_nord"], -30), 1),
@@ -56,16 +57,11 @@ class Carte(QWidget):
         self.setWindowTitle("Simulation Ambulance - IUT Colmar")
         self.setFixedSize(LARGEUR, HAUTEUR)
         self.verrou = threading.Lock()
-        self.embarquement_fini = threading.Event()
-        self.en_marche = threading.Event()
-        self.callback_pause = None
-        self.callback_reprise = None
         self.callback_rejouer = None
-        self.bouton_pause = QPushButton("Pause", self)
-        self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
-        self.bouton_pause.clicked.connect(self.basculer_pause)
+        self.mission_terminee = False
         self.bouton_rejouer = QPushButton("Rejouer", self)
-        self.bouton_rejouer.setGeometry(128, HAUTEUR - 96, 110, 26)
+        self.bouton_rejouer.setGeometry(12, HAUTEUR - 96, 110, 26)
+        self.bouton_rejouer.setEnabled(False)
         self.bouton_rejouer.clicked.connect(self.rejouer)
         self.reinitialiser()
         self.fond = QPixmap(LARGEUR, HAUTEUR)
@@ -75,7 +71,7 @@ class Carte(QWidget):
         peintre.end()
         self.timer = QTimer()
         self.timer.timeout.connect(self.avancer_circulation)
-        self.timer.timeout.connect(self.avancer_lit)
+        self.timer.timeout.connect(self.mettre_a_jour_bouton)
         self.timer.timeout.connect(self.update)
         self.timer.start(25)
 
@@ -84,39 +80,26 @@ class Carte(QWidget):
         self.ambulance_y = 690
         self.angle = -90
         self.feux = etats_initiaux()
-        self.trace = [(VOIES["avenue_nord"], y) for y in range(690 + DISTANCE_SUIVEUSE + 10, 690, -1)] + [(VOIES["avenue_nord"], 690)]
         with self.verrou:
             self.ondes = []
-        self.embarquement_fini.clear()
-        self.portes_ouvertes = False
-        self.lit = Lit(self.embarquement_fini)
-        self.lit.visible = True
-        self.lit.actif = False
-        self.en_marche.set()
-        self.duree_pause = 0.0
-        self.debut_pause = None
-        self.bouton_pause.setText("Pause")
-        self.dernier_temps_lit = time.time()
+        self.lit = Lit()
+        self.mission_terminee = False
         self.dernier_temps_circulation = time.time()
         self.vehicules = self.creer_circulation()
-        self.suiveuse_libre = False
-        self.suiveuse_visible = True
-        self.suiveuse_y = 0.0
 
     def dessiner_decor(self, p):
         p.fillRect(0, 0, LARGEUR, HAUTEUR, FOND)
         for x, y, l, h, couleur in BATIMENTS:
             dessiner_batiment(p, x, y, l, h, couleur)
-        dessiner_parking(p, 20, 20, 110, 250)
         dessiner_parking(p, 925, 30, 70, 160)
         dessiner_routes(p)
         dessiner_marquages(p)
+        dessiner_fleches(p)
+        dessiner_sens_interdit(p, 352, 277)
         dessiner_passages(p)
         dessiner_noms(p)
         for x, y in ARBRES:
             dessiner_arbre(p, x, y)
-        dessiner_voiture(p, 70, 60, 46, 22, QColor(250, 250, 250))
-        dessiner_voiture(p, 70, 138, 46, 22, QColor(250, 250, 250))
         dessiner_voiture(p, 940, 58, 42, 20, QColor(250, 250, 250))
         dessiner_voiture(p, 940, 110, 42, 20, QColor(250, 250, 250))
 
@@ -137,95 +120,23 @@ class Carte(QWidget):
         for vehicule in self.vehicules:
             vehicule.actif = True
 
-    def get_suiveuse_libre(self):
-        return self.suiveuse_libre
-
-    def set_suiveuse_libre(self, libre):
-        self.suiveuse_libre = libre
-
-    def liberer_suiveuse(self):
-        self.suiveuse_y = self.pose_suiveuse()[1]
-        self.set_suiveuse_libre(True)
-
-    def avancer_suiveuse(self, dt):
-        if not self.get_suiveuse_libre():
-            if self.embarquement_fini.is_set() and self.ambulance_x < X_DEMI_TOUR:
-                self.liberer_suiveuse()
-            return
-        self.suiveuse_y -= dt * VITESSE_VOITURE
-        if self.suiveuse_y < -30:
-            self.suiveuse_visible = False
-
     def avancer_circulation(self):
         maintenant = time.time()
-        dt = maintenant - self.dernier_temps_circulation if self.en_marche.is_set() else 0
+        dt = maintenant - self.dernier_temps_circulation
         self.dernier_temps_circulation = maintenant
-        self.avancer_suiveuse(dt)
         obstacles = [(self.ambulance_x, self.ambulance_y)]
-        if self.suiveuse_visible:
-            obstacles.append(self.pose_suiveuse()[:2])
         for vehicule in self.vehicules:
             vehicule.avancer(dt, self.feux, obstacles)
 
-    def avancer_lit(self):
-        maintenant = time.time()
-        duree = maintenant - self.dernier_temps_lit
-        self.dernier_temps_lit = maintenant
-        self.lit.avancer(duree if self.en_marche.is_set() else 0)
-
-    def temps_simulation(self):
-        maintenant = time.time()
-        pause = self.duree_pause
-        if self.debut_pause is not None:
-            pause += maintenant - self.debut_pause
-        return maintenant - pause
-
-    def basculer_pause(self):
-        if self.en_marche.is_set():
-            self.debut_pause = time.time()
-            self.en_marche.clear()
-            self.bouton_pause.setText("Reprendre")
-            if self.callback_pause:
-                self.callback_pause()
-        else:
-            self.duree_pause += time.time() - self.debut_pause
-            self.debut_pause = None
-            self.en_marche.set()
-            self.bouton_pause.setText("Pause")
-            if self.callback_reprise:
-                self.callback_reprise()
+    def mettre_a_jour_bouton(self):
+        self.bouton_rejouer.setEnabled(self.mission_terminee)
 
     def rejouer(self):
         if self.callback_rejouer:
             self.callback_rejouer()
 
-    def jouer_embarquement(self):
-        self.embarquement_fini.clear()
-        self.dernier_temps_lit = time.time()
-        self.lit.actif = True
-        self.portes_ouvertes = True
-        self.embarquement_fini.wait()
-        self.portes_ouvertes = False
-
-    def pose_suiveuse(self):
-        if self.get_suiveuse_libre():
-            return VOIES["branche_nord"], self.suiveuse_y, -90
-        trace = list(self.trace)
-        parcouru = 0
-        i = len(trace) - 1
-        while i > 0 and parcouru < DISTANCE_SUIVEUSE:
-            parcouru += math.dist(trace[i], trace[i - 1])
-            i -= 1
-        x, y = trace[i]
-        suivant = trace[min(i + 5, len(trace) - 1)]
-        angle = math.degrees(math.atan2(suivant[1] - y, suivant[0] - x))
-        return x, y, angle
-
-    def dessiner_suiveuse(self, p):
-        if not self.suiveuse_visible:
-            return
-        x, y, angle = self.pose_suiveuse()
-        dessiner_voiture_orientee(p, x, y, angle, QColor(90, 170, 90))
+    def embarquer_patient(self):
+        self.lit.set_visible(False)
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -236,7 +147,6 @@ class Carte(QWidget):
         self.dessiner_ondes(p)
         for vehicule in self.vehicules:
             vehicule.dessiner(p)
-        self.dessiner_suiveuse(p)
         self.lit.dessiner(p)
         self.dessiner_ambulance(p)
         self.dessiner_legende(p)
@@ -263,7 +173,7 @@ class Carte(QWidget):
             p.drawEllipse(QPointF(x, centre_y), 6, 6)
 
     def dessiner_ondes(self, p):
-        maintenant = self.temps_simulation()
+        maintenant = time.time()
         with self.verrou:
             ondes = list(self.ondes)
         p.setBrush(Qt.NoBrush)
@@ -293,11 +203,6 @@ class Carte(QWidget):
         p.drawRect(QRectF(4, -9, 4, 7))
         p.setBrush(QColor(50, 90, 255) if alternance else QColor(255, 40, 40))
         p.drawRect(QRectF(4, 2, 4, 7))
-        if self.portes_ouvertes:
-            p.setPen(QPen(QColor(40, 40, 45), 1))
-            p.setBrush(QColor(235, 235, 235))
-            p.drawRect(QRectF(-30, -11, 8, 3))
-            p.drawRect(QRectF(-30, 8, 8, 3))
         p.restore()
 
     def dessiner_legende(self, p):
@@ -316,11 +221,9 @@ class Carte(QWidget):
             self.angle = math.degrees(math.atan2(dy, dx))
         self.ambulance_x = x
         self.ambulance_y = y
-        self.trace.append((x, y))
-        del self.trace[:-400]
 
     def ajouter_onde(self):
-        maintenant = self.temps_simulation()
+        maintenant = time.time()
         with self.verrou:
             self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
             self.ondes.append(maintenant)

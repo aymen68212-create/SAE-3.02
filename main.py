@@ -29,17 +29,16 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance = Ambulance()
     ambulance.callback_position = carte.mettre_a_jour_ambulance
     ambulance.callback_onde = carte.ajouter_onde
-    ambulance.en_marche = carte.en_marche
     ambulance.connecter()
     carte.demarrer_circulation()
-    carte.callback_pause = ambulance.signaler_pause
-    carte.callback_reprise = ambulance.signaler_reprise
     ambulance.deplacer(trajet_aller)
     ambulance.signaler_arret()
-    carte.jouer_embarquement()
+    time.sleep(2)
+    carte.embarquer_patient()
     ambulance.signaler_embarquement()
     ambulance.deplacer(generer_trajet_retour(pas))
     ambulance.terminer()
+    carte.mission_terminee = True
 
 
 def lancer_mission(carte, infrastructure_prete, verrou_mission):

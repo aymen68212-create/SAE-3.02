@@ -9,7 +9,7 @@ HAUTEUR = 700
 VITESSE_AMBULANCE = 90
 FREQUENCE_POSITION = 20
 VITESSE_ONDE = 220
-PORTEE_ONDE = 280
+PORTEE_ONDE = 160
 INTERVALLE_ONDE = 0.7
 POINT_ARRET = (885, 110)
 
@@ -66,6 +66,19 @@ def points_arc(centre, rayon, angle_depart, angle_arrivee, pas):
     for i in range(nombre + 1):
         angle = math.radians(angle_depart + (angle_arrivee - angle_depart) * i / nombre)
         points.append((centre[0] + rayon * math.cos(angle), centre[1] + rayon * math.sin(angle)))
+    return points
+
+
+def points_courbe(depart, controle, arrivee, pas):
+    longueur = math.dist(depart, controle) + math.dist(controle, arrivee)
+    nombre = max(1, round(longueur / pas))
+    points = []
+    for i in range(nombre + 1):
+        t = i / nombre
+        points.append((
+            (1 - t) ** 2 * depart[0] + 2 * (1 - t) * t * controle[0] + t ** 2 * arrivee[0],
+            (1 - t) ** 2 * depart[1] + 2 * (1 - t) * t * controle[1] + t ** 2 * arrivee[1],
+        ))
     return points
 
 

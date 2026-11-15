@@ -21,7 +21,11 @@ Projet réalisé en binôme par **Aymen MRIZEL** et **Adam SEBAR** (SAÉ 3.02).
 │   ├── ambulance.py     # Client ambulance : envoie sa position et ses ondes
 │   └── infrastructure.py# Client infrastructure : reçoit les ordres des feux
 └── gui/
-    └── carte.py         # Interface PyQt5 : carte du carrefour, ambulance, ondes, feux
+    ├── carte.py         # Interface PyQt5 : carte du carrefour, ambulance, ondes, feux, bouton Rejouer
+    ├── circulation.py   # Véhicules de fond : trajets, arrêt aux feux, distance de sécurité
+    ├── decor.py         # Bâtiments, routes, marquages, flèches et sens interdit de la diagonale
+    ├── lit.py           # Lit du patient, dessiné dans le parking jusqu'à l'embarquement
+    └── vehicules.py     # Dessin des voitures
 ```
 
 ## Installation
@@ -49,6 +53,8 @@ python main.py
 ```
 
 Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation démarre automatiquement.
+Le bouton **Rejouer** est grisé tant que la mission n'est pas terminée ; il devient actif quand l'ambulance
+est arrivée et relance alors une mission complète.
 
 ## Fonctionnement
 
@@ -57,17 +63,19 @@ Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation d�
   l'état des feux environ toutes les 30 ms.
 - **Client ambulance** (`client/ambulance.py`) : suit un trajet prédéfini (`generer_trajet` dans `parametres.py`).
   À chaque pas, il envoie sa position et son cap (`position_ambulance`) ; toutes les 0,7 s il émet une onde
-  (`onde`). À la fin du trajet, il envoie `arrivee`, ce qui réinitialise le serveur et remet les feux dans leur
+  (`onde`). Une fois arrêtée dans le parking, elle attend 2 secondes pendant que le patient est embarqué
+  (le lit disparaît), puis repart. À la fin du trajet, il envoie `arrivee`, ce qui réinitialise le serveur et remet les feux dans leur
   état initial.
 - **Client infrastructure** (`client/infrastructure.py`) : s'identifie auprès du serveur avec le rôle
   `infrastructure`, puis reçoit les ordres `feu` (identifiant du feu et état `rouge` ou `vert`) et les
   transmet à l'interface.
 - **Logique des feux** : au départ, la paire de feux de l'ambulance est rouge et les deux autres sont vertes.
   Dès que le rayon de l'onde atteint le feu de l'ambulance, la paire de l'ambulance passe au vert et les
-  autres au rouge. Quand l'ambulance s'éloigne au-delà de la portée de l'onde, les feux reviennent à
-  la situation de départ.
+  autres au rouge. Quand l'ambulance s'éloigne au-delà de la portée de l'onde (`PORTEE_ONDE`, 160 pixels), les feux
+  reviennent à la situation de départ.
 - **Interface PyQt5** (`gui/carte.py`) : dessine le carrefour, l'ambulance, les ondes (cercles rouges), les
-  quatre feux et quelques autres véhicules. Elle est mise à jour par les callbacks de l'ambulance et de
+  quatre feux et quelques autres véhicules. La diagonale (Rue Schickelé) est une voie à sens unique vers
+  le carrefour : flèches blanches sur son axe et panneau de sens interdit à son entrée côté carrefour. Elle est mise à jour par les callbacks de l'ambulance et de
   l'infrastructure.
 - **Base de données** (`server/database.py`) : si MariaDB est disponible, les événements sont insérés dans la
   table `evenements` (type, position x/y, horodatage) : positions de l'ambulance (une sur dix), ondes émises
@@ -128,5 +136,10 @@ python -m unittest
 
 - `tests/test_trajets.py` : départ et arrivée des trajets aller et retour, pas de point répété et pas plus de
   10 pixels entre deux points consécutifs.
+- `tests/test_carte.py` : trajets des véhicules de fond (voiture violette, taxi sur l'axe de la diagonale),
+  lit, bouton Rejouer grisé jusqu'à la fin de la mission.
+- `tests/test_ondes.py` : phases `attente`, `passage`, `apres` obtenues en faisant rouler l'ambulance avec des
+  ondes de 160 pixels de portée, à l'aller et au retour.
+- `tests/test_circulation.py` : arrêt aux feux et distance de sécurité des véhicules.
 - `tests/test_feux.py` : état voulu de chaque feu selon la phase (`attente`, `passage`, `apres`) à l'aller
   (`PAIRE_AMBULANCE`) et au retour (`PAIRE_RETOUR`) ; le serveur ne se connecte pas à la base avant `demarrer()`.

@@ -12,7 +12,6 @@ class Ambulance:
         self.connexion = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.callback_position = None
         self.callback_onde = None
-        self.en_marche = None
         self.verrou_envoi = threading.Lock()
 
     def get_position(self):
@@ -56,23 +55,9 @@ class Ambulance:
     def signaler_embarquement(self):
         self.envoyer({"type": "patient_embarque"})
 
-    def signaler_pause(self):
-        try:
-            self.envoyer({"type": "pause"})
-        except OSError:
-            pass
-
-    def signaler_reprise(self):
-        try:
-            self.envoyer({"type": "reprise"})
-        except OSError:
-            pass
-
     def deplacer(self, trajet):
         derniere_onde = 0
         for x, y in trajet:
-            if self.en_marche is not None:
-                self.en_marche.wait()
             self.envoyer_position(x, y)
             if self.callback_position:
                 self.callback_position(x, y)

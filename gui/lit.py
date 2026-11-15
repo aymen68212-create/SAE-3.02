@@ -1,7 +1,5 @@
-import math
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import Qt, QRectF, QPointF
-from parametres import points_ligne, points_arc
 
 
 def dessiner_lit(p, x, y, angle, avec_patient=True):
@@ -35,20 +33,12 @@ def dessiner_lit(p, x, y, angle, avec_patient=True):
     p.restore()
 
 
-VITESSE_LIT = 60
-
-
 class Lit:
-    def __init__(self, fin=None):
+    def __init__(self):
         self.x = 958
         self.y = 170
         self.angle = 180
-        self.fin = fin
-        self.trajet = self.generer_trajet_lit()
-        self.indice = 0.0
         self.visible = True
-        self.actif = False
-        self.en_mouvement = False
 
     def get_position(self):
         return (self.x, self.y)
@@ -63,35 +53,11 @@ class Lit:
     def set_angle(self, angle):
         self.angle = angle
 
-    def generer_trajet_lit(self):
-        morceaux = (
-            points_ligne((958, 170), (910, 170), 1)
-            + points_arc((910, 145), 25, 90, 180, 1)
-            + points_ligne((885, 145), (885, 110), 1)
-        )
-        points = []
-        for point in morceaux:
-            if not points or math.dist(points[-1], point) > 1e-6:
-                points.append(point)
-        return points
+    def get_visible(self):
+        return self.visible
 
-    def avancer(self, duree):
-        if not self.actif:
-            return
-        self.en_mouvement = True
-        self.indice += duree * VITESSE_LIT
-        if self.indice >= len(self.trajet) - 1:
-            self.indice = len(self.trajet) - 1
-            self.x, self.y = self.trajet[-1]
-            self.visible = False
-            self.actif = False
-            self.en_mouvement = False
-            if self.fin is not None:
-                self.fin.set()
-            return
-        self.x, self.y = self.trajet[int(self.indice)]
-        suivant = self.trajet[int(self.indice) + 1]
-        self.angle = math.degrees(math.atan2(suivant[1] - self.y, suivant[0] - self.x))
+    def set_visible(self, visible):
+        self.visible = visible
 
     def dessiner(self, p):
         if self.visible:

@@ -1,4 +1,5 @@
-from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont
+import math
+from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont, QPolygonF
 from PyQt5.QtCore import Qt, QPointF, QRectF
 from parametres import HAUTEUR
 
@@ -20,11 +21,11 @@ BATIMENTS = [
 ]
 
 ARBRES = [
-    (140, 30), (370, 60), (370, 140), (60, 300), (120, 335), (200, 300), (300, 275),
-    (60, 580), (375, 440), (160, 520), (230, 570),
-    (630, 215), (710, 225), (775, 215),
-    (950, 230), (960, 300), (950, 400),
-    (655, 412), (800, 420), (790, 560), (640, 570), (630, 650), (930, 640), (965, 610), (985, 440),
+    (140, 30), (370, 140), (120, 335), (300, 275),
+    (60, 580), (160, 520),
+    (630, 215), (775, 215),
+    (950, 230), (950, 400),
+    (655, 412), (790, 560), (630, 650),
 ]
 
 
@@ -95,9 +96,29 @@ def dessiner_marquages(p):
     for x in (450, 500, 550):
         p.drawLine(x, 0, x, 248)
         p.drawLine(x, 394, x, HAUTEUR)
-    p.drawLine(388, 322, 0, 516)
     p.drawLine(622, 320, 860, 320)
     p.drawLine(860, 320, 860, 0)
+
+
+def dessiner_fleches(p):
+    p.setPen(Qt.NoPen)
+    p.setBrush(MARQUAGE)
+    for x in (70, 160, 250):
+        p.save()
+        p.translate(x, 520 - x / 2)
+        p.rotate(math.degrees(math.atan2(-200, 400)))
+        p.drawRect(QRectF(-14, -2.5, 20, 5))
+        p.drawPolygon(QPolygonF([QPointF(4, -9), QPointF(18, 0), QPointF(4, 9)]))
+        p.restore()
+
+
+def dessiner_sens_interdit(p, x, y):
+    p.setPen(QPen(QColor(255, 255, 255), 1.5))
+    p.setBrush(QColor(210, 30, 35))
+    p.drawEllipse(QPointF(x, y), 9, 9)
+    p.setPen(Qt.NoPen)
+    p.setBrush(QColor(255, 255, 255))
+    p.drawRect(QRectF(x - 6, y - 2, 12, 4))
 
 
 def dessiner_passages(p):
