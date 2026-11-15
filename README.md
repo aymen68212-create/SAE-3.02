@@ -53,7 +53,7 @@ python main.py
 ```
 
 Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation démarre automatiquement.
-Le bouton **Rejouer** est grisé tant que la mission n'est pas terminée ; il devient actif quand l'ambulance
+Le bouton **Pause** fige tout (ambulance, véhicules, ondes, feux) jusqu'à **Reprendre**. Le bouton **Rejouer** est grisé tant que la mission n'est pas terminée ; il devient actif quand l'ambulance
 est arrivée et relance alors une mission complète.
 
 ## Fonctionnement
@@ -94,6 +94,8 @@ chaque message étant terminé par un retour à la ligne (`\n`). Chaque message 
 | `identification` | infrastructure | serveur | `role` (`"infrastructure"`) | Le client est ajouté à la liste des infrastructures qui recevront les ordres `feu`. |
 | `position_ambulance` | ambulance | serveur | `x`, `y`, `cap` | Mémorise la dernière position et le cap ; la première position d'une mission ouvre une mission en base ; une position sur dix est enregistrée. |
 | `onde` | ambulance | serveur | `x`, `y`, `cap` | Démarre une onde dont le rayon grandit ; enregistrée comme `onde_ambulance`. |
+| `pause` | ambulance | serveur | aucun | Mémorise l'instant de la pause : les ondes et les feux sont figés (bouton Pause de l'interface). |
+| `reprise` | ambulance | serveur | aucun | Décale les ondes de la durée de la pause pour qu'elles reprennent à leur rayon d'avant. |
 | `arret` | ambulance | serveur | `x`, `y` | Enregistré comme `arret_ambulance`, affiche « Ambulance arrêtée ». |
 | `patient_embarque` | ambulance | serveur | aucun | Enregistré avec la dernière position connue, affiche « Patient embarqué » et passe au trajet retour (état de repos inversé). |
 | `arrivee` | ambulance | serveur | aucun | Ferme la mission en base et réinitialise le serveur : trajet `aller`, aucun axe actif, feux dans leur état initial. |
@@ -143,6 +145,7 @@ python -m unittest
   lit, bouton Rejouer grisé jusqu'à la fin de la mission.
 - `tests/test_ondes.py` : axe actif obtenu en rejouant les trajets aller et retour à 20 Hz (`time.time`
   patché) : le feu d'approche est vert avant y=421 à l'aller (sud_droite) et x=653 au retour (nord_droite).
+- `tests/test_pause.py` : décalage des ondes de la durée de la pause, reprise sans pause, double pause.
 - `tests/test_circulation.py` : arrêt aux feux et distance de sécurité des véhicules.
 - `tests/test_feux.py` : état voulu de chaque feu au repos et selon l'axe actif, à l'aller et au retour ;
   activation de l'axe par un feu touché et libération hors de portée ; le serveur ne se connecte pas à la base avant `demarrer()`.
