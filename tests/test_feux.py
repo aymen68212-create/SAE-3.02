@@ -86,21 +86,6 @@ class TestFeux(unittest.TestCase):
         self.mettre_a_jour((900, 600), 103.5)
         self.assertIsNone(self.serveur.axe_actif)
 
-    def test_la_pause_ne_compte_pas_dans_le_delai(self):
-        self.serveur.axe_actif = PAIRE_AMBULANCE
-        self.mettre_a_jour((900, 600), 100.0)
-        with unittest.mock.patch("server.server.time.time", return_value=101.0):
-            self.serveur.mettre_en_pause()
-        self.mettre_a_jour((900, 600), 160.0)
-        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
-        with unittest.mock.patch("server.server.time.time", return_value=161.0):
-            self.serveur.reprendre()
-        self.assertEqual(self.serveur.sortie_portee, 160.0)
-        self.mettre_a_jour((900, 600), 161.9)
-        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
-        self.mettre_a_jour((900, 600), 162.0)
-        self.assertIsNone(self.serveur.axe_actif)
-
     def test_remise_a_zero_du_delai(self):
         self.serveur.sortie_portee = 5.0
         self.serveur.demarrer_retour()

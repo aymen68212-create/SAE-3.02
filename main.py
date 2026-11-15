@@ -21,15 +21,6 @@ def lancer_infrastructure(carte, infrastructure_prete):
     infrastructure.ecouter()
 
 
-def attendre(carte, duree):
-    reste = duree
-    while reste > 0:
-        carte.en_marche.wait()
-        time.sleep(0.05)
-        if carte.en_marche.is_set():
-            reste -= 0.05
-
-
 def lancer_ambulance(carte, infrastructure_prete):
     infrastructure_prete.wait()
     time.sleep(1)
@@ -38,14 +29,11 @@ def lancer_ambulance(carte, infrastructure_prete):
     ambulance = Ambulance()
     ambulance.callback_position = carte.mettre_a_jour_ambulance
     ambulance.callback_onde = carte.ajouter_onde
-    ambulance.en_marche = carte.en_marche
     ambulance.connecter()
     carte.demarrer_circulation()
-    carte.callback_pause = ambulance.signaler_pause
-    carte.callback_reprise = ambulance.signaler_reprise
     ambulance.deplacer(trajet_aller)
     ambulance.signaler_arret()
-    attendre(carte, 2)
+    time.sleep(2)
     carte.embarquer_patient()
     ambulance.signaler_embarquement()
     ambulance.deplacer(generer_trajet_retour(pas))

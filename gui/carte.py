@@ -51,17 +51,11 @@ class Carte(QWidget):
         self.setWindowTitle("Simulation Ambulance - IUT Colmar")
         self.setFixedSize(LARGEUR, HAUTEUR)
         self.verrou = threading.Lock()
-        self.en_marche = threading.Event()
-        self.callback_pause = None
-        self.callback_reprise = None
         self.callback_rejouer = None
         self.mission_terminee = False
         self.feux = etats_initiaux()
-        self.bouton_pause = QPushButton("Pause", self)
-        self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
-        self.bouton_pause.clicked.connect(self.basculer_pause)
         self.bouton_rejouer = QPushButton("Rejouer", self)
-        self.bouton_rejouer.setGeometry(128, HAUTEUR - 96, 110, 26)
+        self.bouton_rejouer.setGeometry(12, HAUTEUR - 96, 110, 26)
         self.bouton_rejouer.setEnabled(False)
         self.bouton_rejouer.clicked.connect(self.rejouer)
         self.reinitialiser()
@@ -84,10 +78,6 @@ class Carte(QWidget):
             self.ondes = []
         self.lit = Lit()
         self.mission_terminee = False
-        self.en_marche.set()
-        self.duree_pause = 0.0
-        self.debut_pause = None
-        self.bouton_pause.setText("Pause")
         self.dernier_temps_circulation = time.time()
         self.vehicules = self.creer_circulation()
 
@@ -126,7 +116,7 @@ class Carte(QWidget):
 
     def avancer_circulation(self):
         maintenant = time.time()
-        dt = maintenant - self.dernier_temps_circulation if self.en_marche.is_set() else 0
+        dt = maintenant - self.dernier_temps_circulation
         self.dernier_temps_circulation = maintenant
         for vehicule in self.vehicules:
             obstacles = [(self.ambulance_x, self.ambulance_y)]
@@ -135,29 +125,6 @@ class Carte(QWidget):
 
     def mettre_a_jour_bouton(self):
         self.bouton_rejouer.setEnabled(self.mission_terminee)
-        self.bouton_pause.setEnabled(not self.mission_terminee)
-
-    def temps_simulation(self):
-        maintenant = time.time()
-        pause = self.duree_pause
-        if self.debut_pause is not None:
-            pause += maintenant - self.debut_pause
-        return maintenant - pause
-
-    def basculer_pause(self):
-        if self.en_marche.is_set():
-            self.debut_pause = time.time()
-            self.en_marche.clear()
-            self.bouton_pause.setText("Reprendre")
-            if self.callback_pause:
-                self.callback_pause()
-        else:
-            self.duree_pause += time.time() - self.debut_pause
-            self.debut_pause = None
-            self.en_marche.set()
-            self.bouton_pause.setText("Pause")
-            if self.callback_reprise:
-                self.callback_reprise()
 
     def rejouer(self):
         if self.callback_rejouer:
@@ -201,7 +168,7 @@ class Carte(QWidget):
             p.drawEllipse(QPointF(x, centre_y), 6, 6)
 
     def dessiner_ondes(self, p):
-        maintenant = self.temps_simulation()
+        maintenant = time.time()
         with self.verrou:
             ondes = list(self.ondes)
         p.setBrush(Qt.NoBrush)
@@ -225,7 +192,7 @@ class Carte(QWidget):
         p.setBrush(QColor(220, 30, 30))
         p.drawRect(QRectF(-16, -2.5, 13, 5))
         p.drawRect(QRectF(-12, -6.5, 5, 13))
-        alternance = int(self.temps_simulation() * 6) % 2 == 0
+        alternance = int(time.time() * 6) % 2 == 0
         p.setBrush(QColor(255, 40, 40) if alternance else QColor(50, 90, 255))
         p.drawRect(QRectF(4, -9, 4, 7))
         p.setBrush(QColor(50, 90, 255) if alternance else QColor(255, 40, 40))
@@ -250,7 +217,7 @@ class Carte(QWidget):
         self.ambulance_y = y
 
     def ajouter_onde(self):
-        maintenant = self.temps_simulation()
+        maintenant = time.time()
         with self.verrou:
             self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
             self.ondes.append(maintenant)
