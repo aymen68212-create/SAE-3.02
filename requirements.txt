@@ -1,2 +1,2 @@
 PyQt5
-mariadb
+mariadb>=2.0.0rc2

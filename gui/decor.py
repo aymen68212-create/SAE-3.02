@@ -1,3 +1,5 @@
+"""Dessin du décor fixe : bâtiments, routes, marquages, terre-plein, passages piétons et noms de rues."""
+
 from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont
 from PyQt5.QtCore import Qt, QPointF, QRectF
 from parametres import HAUTEUR
@@ -30,6 +32,16 @@ ARBRES = [
 
 
 def dessiner_batiment(p, x, y, l, h, couleur):
+    """Dessine un bâtiment avec son ombre et ses fenêtres.
+
+    Args:
+        p: `QPainter`.
+        x: abscisse du coin supérieur gauche.
+        y: ordonnée du coin supérieur gauche.
+        l: largeur.
+        h: hauteur.
+        couleur: `QColor` des murs.
+    """
     p.setPen(Qt.NoPen)
     p.setBrush(QColor(0, 0, 0, 40))
     p.drawRect(x + 8, y + 8, l, h)
@@ -45,6 +57,15 @@ def dessiner_batiment(p, x, y, l, h, couleur):
 
 
 def dessiner_parking(p, x, y, l, h):
+    """Dessine un parking avec ses places.
+
+    Args:
+        p: `QPainter`.
+        x: abscisse du coin supérieur gauche.
+        y: ordonnée du coin supérieur gauche.
+        l: largeur.
+        h: hauteur.
+    """
     p.setPen(QPen(QColor(120, 120, 125), 2))
     p.setBrush(PARKING)
     p.drawRect(x, y, l, h)
@@ -56,6 +77,13 @@ def dessiner_parking(p, x, y, l, h):
 
 
 def dessiner_arbre(p, x, y):
+    """Dessine un arbre centré en (x, y).
+
+    Args:
+        p: `QPainter`.
+        x: abscisse du centre.
+        y: ordonnée du centre.
+    """
     p.setPen(Qt.NoPen)
     p.setBrush(QColor(0, 0, 0, 45))
     p.drawEllipse(QPointF(x + 3, y + 5), 12, 10)
@@ -68,6 +96,11 @@ def dessiner_arbre(p, x, y):
 
 
 def chaussees():
+    """Construit la forme de toutes les chaussées (avenue, Rue des Jardins, diagonale à une voie).
+
+    Returns:
+        Un `QPainterPath` simplifié (union des rectangles et de la diagonale).
+    """
     chemin = QPainterPath()
     chemin.setFillRule(Qt.WindingFill)
     chemin.addRect(400, 0, 200, HAUTEUR)
@@ -84,12 +117,22 @@ def chaussees():
 
 
 def dessiner_routes(p):
+    """Dessine les chaussées avec leur bordure de trottoir.
+
+    Args:
+        p: `QPainter`.
+    """
     route = chaussees()
     p.strokePath(route, QPen(TROTTOIR, 22, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
     p.fillPath(route, ROUTE)
 
 
 def dessiner_marquages(p):
+    """Dessine les lignes pointillées blanches (sauf sur la diagonale et le terre-plein).
+
+    Args:
+        p: `QPainter`.
+    """
     pointillees = QPen(MARQUAGE, 2)
     pointillees.setDashPattern([7, 9])
     p.setPen(pointillees)
@@ -101,6 +144,11 @@ def dessiner_marquages(p):
 
 
 def dessiner_terre_plein(p):
+    """Dessine le terre-plein central végétalisé de l'avenue d'Alsace (parties nord et sud) et ses arbustes.
+
+    Args:
+        p: `QPainter`.
+    """
     p.setPen(QPen(TROTTOIR, 3))
     p.setBrush(HERBE)
     for haut, bas in ((-5, 246), (394, 705)):
@@ -115,6 +163,13 @@ def dessiner_terre_plein(p):
 
 
 def dessiner_sens_interdit(p, x, y):
+    """Dessine un panneau de sens interdit (disque rouge, barre blanche).
+
+    Args:
+        p: `QPainter`.
+        x: abscisse du centre.
+        y: ordonnée du centre.
+    """
     p.setPen(QPen(QColor(255, 255, 255), 1.5))
     p.setBrush(QColor(210, 30, 35))
     p.drawEllipse(QPointF(x, y), 9, 9)
@@ -124,6 +179,11 @@ def dessiner_sens_interdit(p, x, y):
 
 
 def dessiner_passages(p):
+    """Dessine les passages piétons autour du carrefour.
+
+    Args:
+        p: `QPainter`.
+    """
     p.setPen(Qt.NoPen)
     p.setBrush(MARQUAGE)
     for x in range(410, 592, 18):
@@ -135,6 +195,11 @@ def dessiner_passages(p):
 
 
 def dessiner_noms(p):
+    """Écrit les noms de rues et dessine la plaque D201.
+
+    Args:
+        p: `QPainter`.
+    """
     p.setPen(QColor(255, 255, 255))
     p.setFont(QFont("Arial", 13, QFont.Bold))
     p.save()

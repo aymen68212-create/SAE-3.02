@@ -1,7 +1,14 @@
+"""Affiche les derniers événements enregistrés en base (python -m server.consulter)."""
+
 from server.database import Database
 
 
 def afficher_evenements(limite=20):
+    """Affiche sous forme de tableau les derniers événements de la base.
+
+    Args:
+        limite: nombre d'événements à afficher.
+    """
     db = Database()
     db.connecter()
     if db.connexion is None:
