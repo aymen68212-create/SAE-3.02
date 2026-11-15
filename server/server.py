@@ -4,7 +4,7 @@ import threading
 import time
 import math
 from server.database import Database
-from parametres import HOTE, PORT, FEUX, FEU_AMBULANCE, PAIRE_AMBULANCE, FEU_RETOUR, PAIRE_RETOUR, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
+from parametres import HOTE, PORT, FEUX, PAIRE_AMBULANCE, PAIRE_RETOUR, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
 
 
 class Serveur:
@@ -21,7 +21,7 @@ class Serveur:
         self.cap_ambulance = None
         self.ondes = []
         self.etat_feux = etats_initiaux()
-        self.phase = "attente"
+        self.axe_actif = None
         self.trajet = "aller"
         self.compteur_positions = 0
 
@@ -125,11 +125,13 @@ class Serveur:
             if position is None:
                 return
             rayon = (maintenant - self.ondes[0]) * VITESSE_ONDE if self.ondes else 0
-            distance = self.distance(position, FEUX[self.feu_courant()])
-            if self.phase == "attente" and distance <= rayon:
-                self.phase = "passage"
-            elif self.phase == "passage" and distance > PORTEE_ONDE:
-                self.phase = "apres"
+            if self.axe_actif is not None and not self.a_portee(position, self.axe_actif):
+                self.axe_actif = None
+            if self.axe_actif is None and self.ondes:
+                for id_feu in FEUX:
+                    if self.distance(position, FEUX[id_feu]) <= rayon:
+                        self.axe_actif = self.axe_de(id_feu)
+                        break
             for id_feu in FEUX:
                 actuel = self.etat_feux[id_feu]
                 nouveau = self.etat_voulu(id_feu)
@@ -139,16 +141,19 @@ class Serveur:
         for id_feu, etat, position in changements:
             self.signaler_feu(id_feu, etat, position)
 
-    def feu_courant(self):
-        return FEU_RETOUR if self.trajet == "retour" else FEU_AMBULANCE
+    def a_portee(self, position, axe):
+        return any(self.distance(position, FEUX[id_feu]) < PORTEE_ONDE for id_feu in axe)
 
-    def paire_courante(self):
+    def axe_de(self, id_feu):
+        return PAIRE_AMBULANCE if id_feu in PAIRE_AMBULANCE else PAIRE_RETOUR
+
+    def paire_repos(self):
         return PAIRE_RETOUR if self.trajet == "retour" else PAIRE_AMBULANCE
 
     def etat_voulu(self, id_feu):
-        if id_feu in self.paire_courante():
-            return "vert" if self.phase == "passage" else "rouge"
-        return "rouge" if self.phase == "passage" else "vert"
+        if self.axe_actif is None:
+            return "rouge" if id_feu in self.paire_repos() else "vert"
+        return "vert" if id_feu in self.axe_actif else "rouge"
 
     def distance(self, position, feu):
         return math.hypot(position[0] - feu["x"], position[1] - feu["y"])
@@ -171,7 +176,7 @@ class Serveur:
     def demarrer_retour(self):
         with self.verrou:
             self.trajet = "retour"
-            self.phase = "attente"
+            self.axe_actif = None
             changements = []
             for id_feu in FEUX:
                 nouveau = self.etat_voulu(id_feu)
@@ -189,7 +194,7 @@ class Serveur:
             self.cap_ambulance = None
             self.ondes = []
             self.compteur_positions = 0
-            self.phase = "attente"
+            self.axe_actif = None
             initiaux = etats_initiaux()
             a_remettre = [id_feu for id_feu, etat in self.etat_feux.items() if etat != initiaux[id_feu]]
             for id_feu in a_remettre:

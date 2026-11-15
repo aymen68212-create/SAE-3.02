@@ -69,11 +69,12 @@ est arrivée et relance alors une mission complète.
 - **Client infrastructure** (`client/infrastructure.py`) : s'identifie auprès du serveur avec le rôle
   `infrastructure`, puis reçoit les ordres `feu` (identifiant du feu et état `rouge` ou `vert`) et les
   transmet à l'interface.
-- **Logique des feux** : au départ, la paire de feux de l'ambulance est rouge et les deux autres sont vertes.
-  Dès que le rayon de l'onde atteint le feu de l'ambulance, la paire de l'ambulance passe au vert et les
-  autres au rouge. Quand l'ambulance s'éloigne au-delà de la portée de l'onde (`PORTEE_ONDE`, 160 pixels), les feux
-  reviennent à la situation de départ.
-- **Interface PyQt5** (`gui/carte.py`) : dessine le carrefour, l'ambulance, les ondes (cercles rouges), les
+- **Logique des feux** : un feu est « touché » quand la distance ambulance-feu est inférieure ou égale au
+  rayon de la plus grande onde vivante. Au repos, `PAIRE_AMBULANCE` (sud_droite / nord_gauche) est rouge et
+  `PAIRE_RETOUR` (sud_gauche / nord_droite) est verte à l'aller ; c'est l'inverse au retour. Dès qu'un feu est
+  touché, son axe passe au vert et l'autre au rouge. L'axe reste vert tant que l'ambulance est à moins de
+  `PORTEE_ONDE` (110 pixels) d'au moins un de ses feux, puis les feux reviennent au repos.
+- **Interface PyQt5** (`gui/carte.py`) : dessine le carrefour, l'ambulance, les ondes (cercles rouges fins), les
   quatre feux et quelques autres véhicules. La diagonale (Rue Schickelé) est une voie à sens unique vers
   le carrefour : flèches blanches sur son axe et panneau de sens interdit à son entrée côté carrefour. Elle est mise à jour par les callbacks de l'ambulance et de
   l'infrastructure.
@@ -92,8 +93,8 @@ chaque message étant terminé par un retour à la ligne (`\n`). Chaque message 
 | `position_ambulance` | ambulance | serveur | `x`, `y`, `cap` | Mémorise la dernière position et le cap ; la première position d'une mission ouvre une mission en base ; une position sur dix est enregistrée. |
 | `onde` | ambulance | serveur | `x`, `y`, `cap` | Démarre une onde dont le rayon grandit ; enregistrée comme `onde_ambulance`. |
 | `arret` | ambulance | serveur | `x`, `y` | Enregistré comme `arret_ambulance`, affiche « Ambulance arrêtée ». |
-| `patient_embarque` | ambulance | serveur | aucun | Enregistré avec la dernière position connue, affiche « Patient embarqué » et passe au trajet retour (feux `FEU_RETOUR` / `PAIRE_RETOUR`). |
-| `arrivee` | ambulance | serveur | aucun | Ferme la mission en base et réinitialise le serveur : trajet `aller`, phase `attente`, feux dans leur état initial. |
+| `patient_embarque` | ambulance | serveur | aucun | Enregistré avec la dernière position connue, affiche « Patient embarqué » et passe au trajet retour (état de repos inversé). |
+| `arrivee` | ambulance | serveur | aucun | Ferme la mission en base et réinitialise le serveur : trajet `aller`, aucun axe actif, feux dans leur état initial. |
 | `feu` | serveur | infrastructure | `id` (identifiant du feu), `etat` (`"rouge"` ou `"vert"`) | Envoyé à chaque changement d'état d'un feu ; l'infrastructure le transmet à l'interface. |
 
 ## Base de données
@@ -138,8 +139,8 @@ python -m unittest
   10 pixels entre deux points consécutifs.
 - `tests/test_carte.py` : trajets des véhicules de fond (voiture violette, taxi sur l'axe de la diagonale),
   lit, bouton Rejouer grisé jusqu'à la fin de la mission.
-- `tests/test_ondes.py` : phases `attente`, `passage`, `apres` obtenues en faisant rouler l'ambulance avec des
-  ondes de 160 pixels de portée, à l'aller et au retour.
+- `tests/test_ondes.py` : axe actif obtenu en rejouant les trajets aller et retour à 20 Hz (`time.time`
+  patché) : le feu d'approche est vert avant y=421 à l'aller (sud_droite) et x=653 au retour (nord_droite).
 - `tests/test_circulation.py` : arrêt aux feux et distance de sécurité des véhicules.
-- `tests/test_feux.py` : état voulu de chaque feu selon la phase (`attente`, `passage`, `apres`) à l'aller
-  (`PAIRE_AMBULANCE`) et au retour (`PAIRE_RETOUR`) ; le serveur ne se connecte pas à la base avant `demarrer()`.
+- `tests/test_feux.py` : état voulu de chaque feu au repos et selon l'axe actif, à l'aller et au retour ;
+  activation de l'axe par un feu touché et libération hors de portée ; le serveur ne se connecte pas à la base avant `demarrer()`.

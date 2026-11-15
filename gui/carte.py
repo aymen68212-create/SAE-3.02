@@ -180,8 +180,7 @@ class Carte(QWidget):
         for debut in ondes:
             rayon = (maintenant - debut) * VITESSE_ONDE
             if 0 <= rayon <= PORTEE_ONDE:
-                opacite = int(50 + 190 * (1 - rayon / PORTEE_ONDE))
-                p.setPen(QPen(QColor(230, 30, 30, opacite), 3))
+                p.setPen(QPen(QColor(230, 30, 30, 200), 2))
                 p.drawEllipse(QPointF(self.ambulance_x, self.ambulance_y), rayon, rayon)
 
     def dessiner_ambulance(self, p):

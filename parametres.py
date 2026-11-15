@@ -9,7 +9,7 @@ HAUTEUR = 700
 VITESSE_AMBULANCE = 90
 FREQUENCE_POSITION = 20
 VITESSE_ONDE = 220
-PORTEE_ONDE = 160
+PORTEE_ONDE = 110
 INTERVALLE_ONDE = 0.7
 POINT_ARRET = (885, 110)
 
@@ -31,9 +31,7 @@ FEUX = {
 }
 
 
-FEU_AMBULANCE = "sud_droite"
 PAIRE_AMBULANCE = ("sud_droite", "nord_gauche")
-FEU_RETOUR = "sud_gauche"
 PAIRE_RETOUR = ("sud_gauche", "nord_droite")
 
 
