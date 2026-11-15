@@ -23,7 +23,7 @@ Projet réalisé en binôme par **Aymen MRIZEL** et **Adam SEBAR** (SAÉ 3.02).
 └── gui/
     ├── carte.py         # Interface PyQt5 : carte du carrefour, ambulance, ondes, feux, bouton Rejouer
     ├── circulation.py   # Véhicules de fond : trajets, arrêt aux feux, distance de sécurité
-    ├── decor.py         # Bâtiments, routes, marquages, flèches et sens interdit de la diagonale
+    ├── decor.py         # Bâtiments, routes, marquages, terre-plein central et sens interdit de la diagonale
     ├── lit.py           # Lit du patient, dessiné dans le parking jusqu'à l'embarquement
     └── vehicules.py     # Dessin des voitures
 ```
@@ -75,8 +75,10 @@ est arrivée et relance alors une mission complète.
   touché, son axe passe au vert et l'autre au rouge. L'axe reste vert tant que l'ambulance est à moins de
   `PORTEE_ONDE` (110 pixels) d'au moins un de ses feux, puis les feux reviennent au repos.
 - **Interface PyQt5** (`gui/carte.py`) : dessine le carrefour, l'ambulance, les ondes (cercles rouges fins), les
-  quatre feux et quelques autres véhicules. La diagonale (Rue Schickelé) est une voie à sens unique vers
-  le carrefour : flèches blanches sur son axe et panneau de sens interdit à son entrée côté carrefour. Elle est mise à jour par les callbacks de l'ambulance et de
+  quatre feux et quelques autres véhicules. La diagonale (Rue Schickelé) est une seule voie de 50 px, à sens
+  unique vers le carrefour, avec un panneau de sens interdit sur le trottoir nord à son entrée. L'Av. d'Alsace
+  a un terre-plein central végétalisé. Les véhicules de fond (bleue, violette, taxi, voiture verte derrière
+  l'ambulance) s'arrêtent aux feux rouges et derrière tout véhicule devant eux. L'interface est mise à jour par les callbacks de l'ambulance et de
   l'infrastructure.
 - **Base de données** (`server/database.py`) : si MariaDB est disponible, les événements sont insérés dans la
   table `evenements` (type, position x/y, horodatage) : positions de l'ambulance (une sur dix), ondes émises
@@ -137,7 +139,7 @@ python -m unittest
 
 - `tests/test_trajets.py` : départ et arrivée des trajets aller et retour, pas de point répété et pas plus de
   10 pixels entre deux points consécutifs.
-- `tests/test_carte.py` : trajets des véhicules de fond (voiture violette, taxi sur l'axe de la diagonale),
+- `tests/test_carte.py` : trajets des véhicules de fond (voitures violette et verte, taxi sur l'axe de la diagonale puis vers l'avenue),
   lit, bouton Rejouer grisé jusqu'à la fin de la mission.
 - `tests/test_ondes.py` : axe actif obtenu en rejouant les trajets aller et retour à 20 Hz (`time.time`
   patché) : le feu d'approche est vert avant y=421 à l'aller (sud_droite) et x=653 au retour (nord_droite).

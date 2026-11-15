@@ -1,5 +1,4 @@
-import math
-from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont, QPolygonF
+from PyQt5.QtGui import QColor, QPen, QPainterPath, QFont
 from PyQt5.QtCore import Qt, QPointF, QRectF
 from parametres import HAUTEUR
 
@@ -7,6 +6,7 @@ ROUTE = QColor(76, 78, 84)
 TROTTOIR = QColor(196, 196, 199)
 MARQUAGE = QColor(245, 245, 245)
 PARKING = QColor(156, 156, 161)
+HERBE = QColor(120, 165, 90)
 
 BATIMENTS = [
     (240, 30, 120, 90, QColor(196, 130, 106)),
@@ -74,10 +74,10 @@ def chaussees():
     chemin.addRect(600, 270, 310, 100)
     chemin.addRect(810, 0, 100, 370)
     diagonale = QPainterPath()
-    diagonale.moveTo(400, 270)
+    diagonale.moveTo(400, 314)
     diagonale.lineTo(400, 370)
     diagonale.lineTo(0, 570)
-    diagonale.lineTo(0, 470)
+    diagonale.lineTo(0, 514)
     diagonale.closeSubpath()
     chemin.addPath(diagonale)
     return chemin.simplified()
@@ -93,23 +93,25 @@ def dessiner_marquages(p):
     pointillees = QPen(MARQUAGE, 2)
     pointillees.setDashPattern([7, 9])
     p.setPen(pointillees)
-    for x in (450, 500, 550):
+    for x in (450, 550):
         p.drawLine(x, 0, x, 248)
         p.drawLine(x, 394, x, HAUTEUR)
     p.drawLine(622, 320, 860, 320)
     p.drawLine(860, 320, 860, 0)
 
 
-def dessiner_fleches(p):
-    p.setPen(Qt.NoPen)
-    p.setBrush(MARQUAGE)
-    for x in (70, 160, 250):
-        p.save()
-        p.translate(x, 520 - x / 2)
-        p.rotate(math.degrees(math.atan2(-200, 400)))
-        p.drawRect(QRectF(-14, -2.5, 20, 5))
-        p.drawPolygon(QPolygonF([QPointF(4, -9), QPointF(18, 0), QPointF(4, 9)]))
-        p.restore()
+def dessiner_terre_plein(p):
+    p.setPen(QPen(TROTTOIR, 3))
+    p.setBrush(HERBE)
+    for haut, bas in ((-5, 246), (394, 705)):
+        p.drawRect(QRectF(493.5, haut + 1.5, 13, bas - haut - 3))
+    for y in (30, 85, 140, 195, 430, 485, 540, 595, 650):
+        p.setPen(QPen(QColor(60, 100, 48), 1))
+        p.setBrush(QColor(82, 127, 63))
+        p.drawEllipse(QPointF(500, y), 4.5, 4.5)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(105, 150, 80))
+        p.drawEllipse(QPointF(499, y - 1), 2, 2)
 
 
 def dessiner_sens_interdit(p, x, y):
@@ -149,7 +151,7 @@ def dessiner_noms(p):
     p.restore()
     p.setPen(QPen(QColor(120, 100, 0), 1))
     p.setBrush(QColor(250, 205, 20))
-    p.drawRoundedRect(QRectF(455, 60, 42, 20), 4, 4)
+    p.drawRoundedRect(QRectF(444, 60, 42, 20), 4, 4)
     p.setPen(QColor(30, 30, 30))
     p.setFont(QFont("Arial", 9, QFont.Bold))
-    p.drawText(QRectF(455, 60, 42, 20), Qt.AlignCenter, "D201")
+    p.drawText(QRectF(444, 60, 42, 20), Qt.AlignCenter, "D201")

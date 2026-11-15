@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF
 from parametres import (LARGEUR, HAUTEUR, VOIES, FEUX, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux,
                         points_ligne, points_arc, points_courbe)
 from gui.decor import (BATIMENTS, ARBRES, dessiner_batiment, dessiner_parking, dessiner_arbre,
-                       dessiner_routes, dessiner_marquages, dessiner_fleches, dessiner_sens_interdit,
+                       dessiner_routes, dessiner_marquages, dessiner_terre_plein, dessiner_sens_interdit,
                        dessiner_passages, dessiner_noms)
 from gui.vehicules import dessiner_voiture
 from gui.lit import Lit
@@ -18,6 +18,7 @@ FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
 COULEUR_VIOLETTE = QColor(160, 90, 190)
 COULEUR_TAXI = QColor(220, 170, 40)
+COULEUR_VERTE = QColor(90, 170, 90)
 
 
 def premier_indice(trajet, condition):
@@ -38,12 +39,17 @@ def trajet_violette():
 def trajet_taxi():
     jardins = VOIES["jardins_est"]
     return trajet_depuis_morceaux([
-        points_ligne((-30, 535), (300, 370), 1),
-        points_courbe((300, 370), (350, jardins), (400, jardins), 1),
-        points_ligne((400, jardins), (830, jardins), 1),
-        points_arc((830, 290), 55, 90, 0, 1),
-        points_ligne((VOIES["branche_nord"], 290), (VOIES["branche_nord"], -30), 1),
+        points_ligne((-30, 557), (350, 367), 1),
+        points_courbe((350, 367), (394, jardins), (400, jardins), 1),
+        points_ligne((400, jardins), (475, jardins), 1),
+        points_arc((475, 295), 50, 90, 0, 1),
+        points_ligne((525, 295), (525, -30), 1),
     ])
+
+
+def trajet_verte():
+    x = VOIES["avenue_nord"]
+    return trajet_depuis_morceaux([points_ligne((x, 760), (x, -30), 1)])
 
 
 def trajet_bleue():
@@ -94,8 +100,8 @@ class Carte(QWidget):
         dessiner_parking(p, 925, 30, 70, 160)
         dessiner_routes(p)
         dessiner_marquages(p)
-        dessiner_fleches(p)
-        dessiner_sens_interdit(p, 352, 277)
+        dessiner_terre_plein(p)
+        dessiner_sens_interdit(p, 352, 328)
         dessiner_passages(p)
         dessiner_noms(p)
         for x, y in ARBRES:
@@ -113,7 +119,10 @@ class Carte(QWidget):
         trajet = trajet_taxi()
         ligne = premier_indice(trajet, lambda x, y: x >= 402)
         taxi = Vehicule(trajet, COULEUR_TAXI, "sud_gauche", ligne)
-        return [bleue, violette, taxi]
+        trajet = trajet_verte()
+        ligne = premier_indice(trajet, lambda x, y: y <= 392)
+        verte = Vehicule(trajet, COULEUR_VERTE, "sud_droite", ligne)
+        return [bleue, violette, taxi, verte]
 
     def demarrer_circulation(self):
         self.dernier_temps_circulation = time.time()
@@ -124,8 +133,9 @@ class Carte(QWidget):
         maintenant = time.time()
         dt = maintenant - self.dernier_temps_circulation
         self.dernier_temps_circulation = maintenant
-        obstacles = [(self.ambulance_x, self.ambulance_y)]
         for vehicule in self.vehicules:
+            obstacles = [(self.ambulance_x, self.ambulance_y)]
+            obstacles += [autre.position() for autre in self.vehicules if autre is not vehicule and not autre.termine()]
             vehicule.avancer(dt, self.feux, obstacles)
 
     def mettre_a_jour_bouton(self):
