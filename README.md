@@ -1,6 +1,6 @@
 # SAÉ 3.02 – Simulation d'une ambulance et de feux tricolores
 
-**Groupe : [NOM DU GROUPE]**
+**Groupe : L'Acquisition**
 Étudiants : Aymen MRIZEL et Adam SEBAR (BUT Réseaux & Télécommunications, 2e année, IUT de Colmar)
 
 ## 1. De quoi s'agit-il ?
