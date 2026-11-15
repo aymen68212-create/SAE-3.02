@@ -16,24 +16,12 @@ from gui.circulation import Vehicule, trajet_depuis_morceaux
 
 FOND = QColor(244, 239, 226)
 COULEUR_BLEUE = QColor(60, 110, 200)
-COULEUR_VIOLETTE = QColor(160, 90, 190)
 COULEUR_TAXI = QColor(220, 170, 40)
 COULEUR_VERTE = QColor(90, 170, 90)
 
 
 def premier_indice(trajet, condition):
     return next(i for i, (x, y) in enumerate(trajet) if condition(x, y))
-
-
-def trajet_violette():
-    jardins = VOIES["jardins_ouest"]
-    return trajet_depuis_morceaux([
-        points_ligne((VOIES["branche_sud"], -30), (VOIES["branche_sud"], 235), 1),
-        points_arc((775, 235), 60, 0, 90, 1),
-        points_ligne((775, jardins), (600, jardins), 1),
-        points_arc((600, 270), 25, 90, 180, 1),
-        points_ligne((575, 270), (575, -30), 1),
-    ])
 
 
 def trajet_taxi():
@@ -68,6 +56,7 @@ class Carte(QWidget):
         self.callback_reprise = None
         self.callback_rejouer = None
         self.mission_terminee = False
+        self.feux = etats_initiaux()
         self.bouton_pause = QPushButton("Pause", self)
         self.bouton_pause.setGeometry(12, HAUTEUR - 96, 110, 26)
         self.bouton_pause.clicked.connect(self.basculer_pause)
@@ -91,7 +80,6 @@ class Carte(QWidget):
         self.ambulance_x = VOIES["avenue_nord"]
         self.ambulance_y = 690
         self.angle = -90
-        self.feux = etats_initiaux()
         with self.verrou:
             self.ondes = []
         self.lit = Lit()
@@ -123,16 +111,13 @@ class Carte(QWidget):
         trajet = trajet_bleue()
         ligne = premier_indice(trajet, lambda x, y: y >= 250)
         bleue = Vehicule(trajet, COULEUR_BLEUE, "nord_gauche", ligne)
-        trajet = trajet_violette()
-        ligne = premier_indice(trajet, lambda x, y: x <= 624 and y == VOIES["jardins_ouest"])
-        violette = Vehicule(trajet, COULEUR_VIOLETTE, "nord_droite", ligne)
         trajet = trajet_taxi()
         ligne = premier_indice(trajet, lambda x, y: x >= 402)
         taxi = Vehicule(trajet, COULEUR_TAXI, "sud_gauche", ligne)
         trajet = trajet_verte()
         ligne = premier_indice(trajet, lambda x, y: y <= 392)
         verte = Vehicule(trajet, COULEUR_VERTE, "sud_droite", ligne)
-        return [bleue, violette, taxi, verte]
+        return [bleue, taxi, verte]
 
     def demarrer_circulation(self):
         self.dernier_temps_circulation = time.time()

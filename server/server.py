@@ -4,7 +4,7 @@ import threading
 import time
 import math
 from server.database import Database
-from parametres import HOTE, PORT, FEUX, PAIRE_AMBULANCE, PAIRE_RETOUR, VITESSE_ONDE, PORTEE_ONDE, etats_initiaux
+from parametres import HOTE, PORT, FEUX, PAIRE_AMBULANCE, PAIRE_RETOUR, VITESSE_ONDE, PORTEE_ONDE, DELAI_CHANGEMENT_FEU, etats_initiaux
 
 
 class Serveur:
@@ -23,6 +23,8 @@ class Serveur:
         self.debut_pause = None
         self.etat_feux = etats_initiaux()
         self.axe_actif = None
+        self.sortie_portee = None
+        self.resynchroniser = True
         self.trajet = "aller"
         self.compteur_positions = 0
 
@@ -128,6 +130,8 @@ class Serveur:
             duree = time.time() - self.debut_pause
             self.debut_pause = None
             self.ondes = [t + duree for t in self.ondes]
+            if self.sortie_portee is not None:
+                self.sortie_portee += duree
 
     def superviser(self):
         while True:
@@ -136,6 +140,7 @@ class Serveur:
 
     def mettre_a_jour_feux(self):
         changements = []
+        renvois = []
         with self.verrou:
             maintenant = self.debut_pause if self.debut_pause is not None else time.time()
             self.ondes = [t for t in self.ondes if (maintenant - t) * VITESSE_ONDE <= PORTEE_ONDE]
@@ -143,21 +148,33 @@ class Serveur:
             if position is None:
                 return
             rayon = (maintenant - self.ondes[0]) * VITESSE_ONDE if self.ondes else 0
-            if self.axe_actif is not None and not self.a_portee(position, self.axe_actif):
-                self.axe_actif = None
+            if self.axe_actif is not None:
+                if self.a_portee(position, self.axe_actif):
+                    self.sortie_portee = None
+                elif self.sortie_portee is None:
+                    self.sortie_portee = maintenant
+                elif maintenant - self.sortie_portee >= DELAI_CHANGEMENT_FEU:
+                    self.axe_actif = None
+                    self.sortie_portee = None
             if self.axe_actif is None and self.ondes:
                 for id_feu in FEUX:
                     if self.distance(position, FEUX[id_feu]) <= rayon:
                         self.axe_actif = self.axe_de(id_feu)
                         break
+            resynchroniser = self.resynchroniser
+            self.resynchroniser = False
             for id_feu in FEUX:
                 actuel = self.etat_feux[id_feu]
                 nouveau = self.etat_voulu(id_feu)
                 if nouveau != actuel:
                     self.etat_feux[id_feu] = nouveau
                     changements.append((id_feu, nouveau, position))
+                elif resynchroniser:
+                    renvois.append((id_feu, nouveau))
         for id_feu, etat, position in changements:
             self.signaler_feu(id_feu, etat, position)
+        for id_feu, etat in renvois:
+            self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": etat})
 
     def a_portee(self, position, axe):
         return any(self.distance(position, FEUX[id_feu]) < PORTEE_ONDE for id_feu in axe)
@@ -195,6 +212,7 @@ class Serveur:
         with self.verrou:
             self.trajet = "retour"
             self.axe_actif = None
+            self.sortie_portee = None
             changements = []
             for id_feu in FEUX:
                 nouveau = self.etat_voulu(id_feu)
@@ -214,13 +232,8 @@ class Serveur:
             self.debut_pause = None
             self.compteur_positions = 0
             self.axe_actif = None
-            initiaux = etats_initiaux()
-            a_remettre = [id_feu for id_feu, etat in self.etat_feux.items() if etat != initiaux[id_feu]]
-            for id_feu in a_remettre:
-                self.etat_feux[id_feu] = initiaux[id_feu]
-        for id_feu in a_remettre:
-            print(f"Feu {id_feu} -> {initiaux[id_feu]}")
-            self.envoyer_aux_infrastructures({"type": "feu", "id": id_feu, "etat": initiaux[id_feu]})
+            self.sortie_portee = None
+            self.resynchroniser = True
 
 
 if __name__ == "__main__":

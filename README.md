@@ -77,7 +77,7 @@ est arrivée et relance alors une mission complète.
 - **Interface PyQt5** (`gui/carte.py`) : dessine le carrefour, l'ambulance, les ondes (cercles rouges fins), les
   quatre feux et quelques autres véhicules. La diagonale (Rue Schickelé) est une seule voie de 50 px, à sens
   unique vers le carrefour, avec un panneau de sens interdit sur le trottoir nord à son entrée. L'Av. d'Alsace
-  a un terre-plein central végétalisé. Les véhicules de fond (bleue, violette, taxi, voiture verte derrière
+  a un terre-plein central végétalisé. Les véhicules de fond (bleue, taxi, voiture verte derrière
   l'ambulance) s'arrêtent aux feux rouges et derrière tout véhicule devant eux. L'interface est mise à jour par les callbacks de l'ambulance et de
   l'infrastructure.
 - **Base de données** (`server/database.py`) : si MariaDB est disponible, les événements sont insérés dans la
@@ -141,7 +141,7 @@ python -m unittest
 
 - `tests/test_trajets.py` : départ et arrivée des trajets aller et retour, pas de point répété et pas plus de
   10 pixels entre deux points consécutifs.
-- `tests/test_carte.py` : trajets des véhicules de fond (voitures violette et verte, taxi sur l'axe de la diagonale puis vers l'avenue),
+- `tests/test_carte.py` : trajets des véhicules de fond (voiture verte, taxi sur l'axe de la diagonale puis vers l'avenue),
   lit, bouton Rejouer grisé jusqu'à la fin de la mission.
 - `tests/test_ondes.py` : axe actif obtenu en rejouant les trajets aller et retour à 20 Hz (`time.time`
   patché) : le feu d'approche est vert avant y=421 à l'aller (sud_droite) et x=653 au retour (nord_droite).

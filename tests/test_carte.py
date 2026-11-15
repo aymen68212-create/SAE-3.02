@@ -3,7 +3,7 @@ import os
 import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt5.QtWidgets import QApplication
-from gui.carte import Carte, trajet_violette, trajet_taxi, trajet_verte
+from gui.carte import Carte, trajet_taxi, trajet_verte
 from gui.lit import Lit
 from parametres import VOIES
 
@@ -11,19 +11,6 @@ app = QApplication.instance() or QApplication([])
 
 
 class TestTrajetsVehicules(unittest.TestCase):
-    def test_violette_tourne_a_droite_vers_le_nord(self):
-        trajet = trajet_violette()
-        self.assertIn((600, 295), trajet)
-        self.assertIn((575, 270), trajet)
-        self.assertEqual(trajet[-1], (575, -30))
-        for x, y in trajet:
-            self.assertFalse(x < 575 and y > 280)
-
-    def test_violette_arc_de_rayon_25(self):
-        for x, y in trajet_violette():
-            if 575 < x < 600 and 270 < y < 295:
-                self.assertAlmostEqual(math.dist((x, y), (600, 270)), 25, delta=0.01)
-
     def test_taxi_roule_sur_l_axe_de_la_diagonale(self):
         for x, y in trajet_taxi():
             if x <= 350:

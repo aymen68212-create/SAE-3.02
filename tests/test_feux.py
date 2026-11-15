@@ -1,6 +1,6 @@
 import unittest
 import unittest.mock
-from parametres import FEUX, PAIRE_AMBULANCE, PAIRE_RETOUR
+from parametres import FEUX, PAIRE_AMBULANCE, PAIRE_RETOUR, DELAI_CHANGEMENT_FEU
 from server.server import Serveur
 
 
@@ -52,12 +52,62 @@ class TestFeux(unittest.TestCase):
             self.serveur.mettre_a_jour_feux()
         self.assertIsNone(self.serveur.axe_actif)
 
-    def test_axe_libere_hors_de_portee(self):
-        self.serveur.position_ambulance = (900, 600)
-        self.serveur.axe_actif = PAIRE_AMBULANCE
-        with unittest.mock.patch("server.server.time.time", return_value=100.0):
+    def mettre_a_jour(self, position, instant):
+        self.serveur.position_ambulance = position
+        with unittest.mock.patch("server.server.time.time", return_value=instant):
             self.serveur.mettre_a_jour_feux()
+
+    def test_delai_de_changement_defini(self):
+        self.assertEqual(DELAI_CHANGEMENT_FEU, 2.0)
+
+    def test_axe_reste_vert_1_9_s_apres_la_sortie_de_portee(self):
+        self.serveur.axe_actif = PAIRE_AMBULANCE
+        self.mettre_a_jour((900, 600), 100.0)
+        self.mettre_a_jour((900, 600), 101.9)
+        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
+        self.assertEqual(self.serveur.etat_feux["sud_droite"], "vert")
+
+    def test_axe_repasse_au_repos_apres_2_s(self):
+        self.serveur.axe_actif = PAIRE_AMBULANCE
+        self.mettre_a_jour((900, 600), 100.0)
+        self.mettre_a_jour((900, 600), 102.0)
         self.assertIsNone(self.serveur.axe_actif)
+        self.assertIsNone(self.serveur.sortie_portee)
+        self.assertEqual(self.serveur.etat_feux, self.attendus(PAIRE_AMBULANCE))
+
+    def test_retour_en_portee_annule_le_compte_a_rebours(self):
+        self.serveur.axe_actif = PAIRE_AMBULANCE
+        self.mettre_a_jour((900, 600), 100.0)
+        self.mettre_a_jour((575, 400), 101.0)
+        self.assertIsNone(self.serveur.sortie_portee)
+        self.mettre_a_jour((900, 600), 101.5)
+        self.mettre_a_jour((900, 600), 103.4)
+        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
+        self.mettre_a_jour((900, 600), 103.5)
+        self.assertIsNone(self.serveur.axe_actif)
+
+    def test_la_pause_ne_compte_pas_dans_le_delai(self):
+        self.serveur.axe_actif = PAIRE_AMBULANCE
+        self.mettre_a_jour((900, 600), 100.0)
+        with unittest.mock.patch("server.server.time.time", return_value=101.0):
+            self.serveur.mettre_en_pause()
+        self.mettre_a_jour((900, 600), 160.0)
+        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
+        with unittest.mock.patch("server.server.time.time", return_value=161.0):
+            self.serveur.reprendre()
+        self.assertEqual(self.serveur.sortie_portee, 160.0)
+        self.mettre_a_jour((900, 600), 161.9)
+        self.assertEqual(self.serveur.axe_actif, PAIRE_AMBULANCE)
+        self.mettre_a_jour((900, 600), 162.0)
+        self.assertIsNone(self.serveur.axe_actif)
+
+    def test_remise_a_zero_du_delai(self):
+        self.serveur.sortie_portee = 5.0
+        self.serveur.demarrer_retour()
+        self.assertIsNone(self.serveur.sortie_portee)
+        self.serveur.sortie_portee = 5.0
+        self.serveur.reinitialiser()
+        self.assertIsNone(self.serveur.sortie_portee)
 
     def test_retour_remet_le_repos_inverse(self):
         self.serveur.axe_actif = PAIRE_AMBULANCE

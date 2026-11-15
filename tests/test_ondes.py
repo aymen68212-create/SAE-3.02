@@ -59,15 +59,70 @@ class TestOndes(unittest.TestCase):
     def test_retour_axe_retour_puis_repos(self):
         self.serveur.demarrer_retour()
         self.parcourir(generer_trajet_retour(PAS))
-        self.assertEqual(set(self.axes), {None, PAIRE_RETOUR})
-        self.assertEqual(self.axes[:2], [None, PAIRE_RETOUR])
-        self.assertIsNone(self.axes[-1])
+        self.assertEqual(self.axes, [None, PAIRE_RETOUR, None])
 
     def test_axe_actif_vert_et_autre_axe_rouge_pendant_le_passage(self):
         for x, y, etats in self.parcourir(generer_trajet(PAS)):
             if (x, y) == (575, 421):
                 for id_feu in FEUX:
                     self.assertEqual(etats[id_feu], "vert" if id_feu in PAIRE_AMBULANCE else "rouge")
+
+    def fin_de_mission(self):
+        self.envois = []
+        self.serveur.envoyer_aux_infrastructures = self.envois.append
+        self.parcourir(generer_trajet(PAS))
+        self.serveur.demarrer_retour()
+        self.serveur.ondes = []
+        self.parcourir(generer_trajet_retour(PAS))
+        self.serveur.traiter_message(None, {"type": "arrivee"})
+
+    def etats_attendus(self, paire_rouge):
+        return {id_feu: "rouge" if id_feu in paire_rouge else "vert" for id_feu in FEUX}
+
+    def test_arrivee_ne_touche_pas_aux_feux(self):
+        self.fin_de_mission()
+        self.envois.clear()
+        self.serveur.traiter_message(None, {"type": "arrivee"})
+        self.assertEqual(self.serveur.etat_feux, self.etats_attendus(PAIRE_RETOUR))
+        self.assertEqual(self.envois, [])
+
+    def test_arrivee_remet_le_reste_a_zero(self):
+        self.fin_de_mission()
+        self.assertEqual(self.serveur.trajet, "aller")
+        self.assertIsNone(self.serveur.position_ambulance)
+        self.assertIsNone(self.serveur.cap_ambulance)
+        self.assertEqual(self.serveur.ondes, [])
+        self.assertEqual(self.serveur.compteur_positions, 0)
+        self.assertIsNone(self.serveur.axe_actif)
+        self.assertIsNone(self.serveur.sortie_portee)
+
+    def test_aucune_mise_a_jour_entre_deux_missions(self):
+        self.fin_de_mission()
+        self.envois.clear()
+        with patch("server.server.time.time", return_value=5000.0):
+            self.serveur.mettre_a_jour_feux()
+        self.assertEqual(self.serveur.etat_feux, self.etats_attendus(PAIRE_RETOUR))
+        self.assertEqual(self.envois, [])
+
+    def test_premier_tick_de_la_mission_suivante_remet_le_repos_de_l_aller(self):
+        self.fin_de_mission()
+        self.envois.clear()
+        del self.serveur.signaler_feu
+        self.serveur.position_ambulance = (575, 690)
+        with patch("server.server.time.time", return_value=5000.0):
+            self.serveur.mettre_a_jour_feux()
+        self.assertEqual(self.serveur.etat_feux, self.etats_attendus(PAIRE_AMBULANCE))
+        envoyes = {m["id"]: m["etat"] for m in self.envois}
+        self.assertEqual(envoyes, self.etats_attendus(PAIRE_AMBULANCE))
+
+    def test_premier_tick_renvoie_les_4_feux_meme_sans_difference(self):
+        self.envois = []
+        self.serveur.envoyer_aux_infrastructures = self.envois.append
+        self.serveur.position_ambulance = (575, 690)
+        with patch("server.server.time.time", return_value=5000.0):
+            self.serveur.mettre_a_jour_feux()
+            self.serveur.mettre_a_jour_feux()
+        self.assertEqual(len(self.envois), 4)
 
     def test_ondes_anciennes_supprimees(self):
         self.serveur.position_ambulance = (0, 0)
