@@ -1,25 +1,199 @@
 # SAÉ 3.02 – Simulation d'une ambulance et de feux tricolores
 
-**Groupe : L'Acquisition** – Aymen MRIZEL et Adam SEBAR
+**Groupe : [NOM DU GROUPE]**
+Étudiants : Aymen MRIZEL et Adam SEBAR (BUT Réseaux & Télécommunications, 2e année, IUT de Colmar)
 
-Simulation d'une ambulance qui traverse le carrefour **Av. d'Alsace × Rue des Jardins**, près de l'IUT de Colmar.
-L'ambulance émet des ondes sonores ; lorsque l'onde touche un feu, le serveur commande le passage des feux :
-l'axe de ce feu passe au vert, l'autre au rouge. Une fois l'ambulance éloignée, les feux reviennent à leur état
-normal.
+## 1. De quoi s'agit-il ?
 
-## Sommaire
+Une ambulance traverse un carrefour réel de Colmar (Av. d'Alsace × Rue des Jardins). Elle émet des « ondes sonores », dessinées comme des cercles rouges. Quand une onde touche un feu, le serveur passe ce feu au vert pour l'ambulance et au rouge pour les autres voitures. Quand l'ambulance s'éloigne, les feux reviennent à la normale. L'ambulance va jusqu'à un parking, embarque un patient, puis refait le chemin dans l'autre sens.
 
-1. [Structure du projet](#structure-du-projet)
-2. [Installation sur Debian](#installation-sur-debian-12-ou-13)
-3. [MariaDB (optionnel)](#mariadb-optionnel-côté-serveur)
-4. [Lancement](#lancement)
-5. [Scénario à deux machines](#scénario-à-deux-machines)
-6. [Problèmes fréquents](#problèmes-fréquents)
-7. [Fonctionnement](#fonctionnement)
-8. [Protocole des messages](#protocole-des-messages)
-9. [Base de données](#base-de-données)
-10. [Tests](#tests)
-11. [Documents du projet](#documents-du-projet)
+Le programme est fait de plusieurs morceaux qui se parlent par le réseau : un **serveur** (il décide), une **ambulance** (elle envoie sa position), une **infrastructure** (les feux, qui obéissent au serveur) et une **fenêtre** qui dessine le tout.
+
+## 2. Comment lire ce guide
+
+- Les étapes numérotées sont à suivre dans l'ordre, sans rien sauter. Chaque étape te dit **quoi taper**, puis **ce que tu dois voir**.
+- Une commande se copie telle quelle (sans les trois apostrophes inversées), puis on appuie sur la touche **Entrée**.
+- Les encadrés « 🔧 Pour les plus avancés » sont facultatifs : on peut les ignorer.
+- Le **terminal** est la fenêtre où l'on tape des commandes. Pour l'ouvrir : menu Applications, puis « Terminal » (ou touches Ctrl + Alt + T).
+
+## 3. Une machine ou deux ?
+
+| | Option A : une seule VM | Option B : deux VM |
+|---|---|---|
+| Principe | tout tourne sur la même machine | une VM « serveur » (avec la base de données) et une VM « client » (avec l'interface) |
+| Difficulté | facile | un peu plus longue |
+| À choisir | pour commencer et pour tester | pour montrer le fonctionnement en réseau |
+
+**Si tu débutes : fais l'Option A d'abord.**
+
+## 4. Option A : installation sur une seule VM
+
+**Étape 1 – Ouvre un terminal** (voir plus haut).
+
+**Étape 2 – Mets à jour la liste des logiciels.**
+```
+sudo apt update
+```
+Le système demande ton mot de passe : tape-le puis Entrée. **Rien ne s'affiche pendant que tu tapes, c'est normal.** Tu dois voir défiler des lignes, puis le terminal te rend la main.
+
+**Étape 3 – Installe les outils nécessaires** (une seule ligne, à copier en entier).
+```
+sudo apt install -y git python3 python3-venv python3-pip libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xkb1
+```
+Tu dois voir des paquets s'installer. Cela peut prendre une minute.
+
+> 🔧 **Pour les plus avancés** : `git` sert à télécharger le projet, `python3-venv` à créer un environnement Python isolé, et les paquets `libxcb…` / `libgl1` sont des bibliothèques dont la fenêtre graphique (PyQt5) a besoin.
+
+**Étape 4 – Télécharge le projet.**
+```
+git clone https://github.com/aymen68212-create/SAE-3.02
+cd SAE-3.02
+```
+Tu dois voir « Cloning into 'SAE-3.02' ». La deuxième commande te place dans le dossier du projet : **toutes les commandes suivantes se tapent dans ce dossier.**
+
+**Étape 5 – Crée l'environnement Python du projet.**
+```
+python3 -m venv .venv
+source .venv/bin/activate
+```
+Tu dois voir **(.venv)** apparaître au début de la ligne du terminal. Si tu fermes le terminal, il faudra retaper `cd SAE-3.02` puis `source .venv/bin/activate` avant de relancer le projet.
+
+> 🔧 **Pour les plus avancés** : un « venv » est un dossier qui contient une copie de Python avec ses propres bibliothèques. Il évite de toucher au Python du système, ce que Debian 12 et 13 interdisent (erreur `externally-managed-environment`).
+
+**Étape 6 – Installe les bibliothèques Python.**
+```
+pip install -r requirements.txt
+```
+Tu dois voir « Successfully installed … » à la fin.
+
+**Étape 7 – Lance la simulation.**
+```
+python main.py
+```
+Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation démarre toute seule. Dans le terminal, tu vois « Serveur en attente de connexions… » puis des lignes « Feu … -> vert/rouge ».
+Pour arrêter : ferme la fenêtre.
+
+**Étape 8 – Vérifie que tout fonctionne (facultatif, conseillé).**
+```
+python -m unittest
+```
+Tu dois voir « OK » à la fin.
+
+**Étape 9 – La base de données (facultatif).** Sans elle, le programme fonctionne normalement, mais n'enregistre rien. Pour l'activer :
+```
+sudo apt install -y mariadb-server
+sudo systemctl enable --now mariadb
+sudo mariadb -e "CREATE DATABASE IF NOT EXISTS sae302; CREATE USER IF NOT EXISTS 'sae'@'localhost' IDENTIFIED BY 'sae'; GRANT ALL PRIVILEGES ON sae302.* TO 'sae'@'localhost'; FLUSH PRIVILEGES;"
+export SAE_DB_USER=sae
+export SAE_DB_PASSWORD=sae
+python main.py
+```
+Dans le terminal, tu dois voir « [DB] Connexion réussie. ». Pour afficher les derniers événements enregistrés (dans le même terminal, après une simulation) :
+```
+python -m server.consulter
+```
+Les deux lignes `export` ne valent que pour le terminal où tu les tapes : si tu en ouvres un autre, retape-les.
+
+> 🔧 **Pour les plus avancés** : sur Debian, l'utilisateur `root` de MariaDB se connecte par le socket système, donc `root/root` ne fonctionne pas en TCP. On crée un utilisateur dédié `sae` et le programme lit ses identifiants dans les variables d'environnement `SAE_DB_HOST`, `SAE_DB_USER`, `SAE_DB_PASSWORD` et `SAE_DB_NAME`.
+
+## 5. Option B : installation sur deux VM
+
+Tu as besoin de l'adresse réseau (IP) de la VM serveur. L'Option A te sert de référence : les étapes sont les mêmes.
+
+### B1. Sur la VM « serveur » (elle porte la base de données)
+
+1. Ouvre un terminal, puis installe les outils (pas besoin des bibliothèques graphiques) :
+```
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip mariadb-server
+```
+2. Télécharge le projet et prépare Python :
+```
+git clone https://github.com/aymen68212-create/SAE-3.02
+cd SAE-3.02
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+3. Prépare la base de données :
+```
+sudo systemctl enable --now mariadb
+sudo mariadb -e "CREATE DATABASE IF NOT EXISTS sae302; CREATE USER IF NOT EXISTS 'sae'@'localhost' IDENTIFIED BY 'sae'; GRANT ALL PRIVILEGES ON sae302.* TO 'sae'@'localhost'; FLUSH PRIVILEGES;"
+export SAE_DB_USER=sae
+export SAE_DB_PASSWORD=sae
+```
+4. Note l'adresse IP de cette VM :
+```
+ip a
+```
+Cherche la ligne qui commence par `inet` suivie de quelque chose comme `192.168.1.25/24` : l'IP est la partie avant le `/`.
+5. Lance le serveur et **laisse ce terminal ouvert** :
+```
+SAE_ECOUTE=0.0.0.0 python -m server.server
+```
+Tu dois voir « Serveur en attente de connexions… » et « [DB] Connexion réussie. ».
+
+> 🔧 **Pour les plus avancés** : `SAE_ECOUTE=0.0.0.0` fait écouter le serveur sur toutes les interfaces réseau, sinon il n'accepte que les connexions de sa propre machine.
+
+### B2. Sur la VM « client » (elle affiche la fenêtre, un bureau graphique est nécessaire)
+
+1. Ouvre un terminal et installe les outils (avec les bibliothèques graphiques) :
+```
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xkb1
+```
+2. Télécharge le projet et prépare Python :
+```
+git clone https://github.com/aymen68212-create/SAE-3.02
+cd SAE-3.02
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+3. Vérifie que la VM client voit le serveur (remplace `192.168.1.25` par l'IP notée à l'étape B1.4) :
+```
+python3 -c "import socket; socket.create_connection(('192.168.1.25', 5050), 3); print('Connexion OK')"
+```
+Tu dois voir « Connexion OK ». Sinon, regarde la section « Problèmes fréquents ».
+4. Lance la simulation (toujours avec ton IP) :
+```
+SAE_HOTE=192.168.1.25 python main.py --sans-serveur
+```
+La fenêtre s'ouvre ; c'est le serveur de l'autre VM qui commande les feux.
+
+### B3. Vérifier la base de données
+
+Sur la VM serveur, dans **un deuxième terminal**, depuis le dossier du projet :
+```
+source .venv/bin/activate
+export SAE_DB_USER=sae
+export SAE_DB_PASSWORD=sae
+python -m server.consulter
+```
+Tu dois voir un tableau avec les événements de la mission.
+
+## 6. Ce que tu vois à l'écran
+
+- L'ambulance (blanche avec une croix rouge) arrive par le sud. Les **cercles rouges** sont ses ondes sonores.
+- Le feu touché par une onde passe au **vert** : l'ambulance passe. Les autres véhicules attendent au rouge.
+- L'ambulance s'arrête au parking à droite, le lit disparaît (le patient est embarqué), puis elle repart par l'autre route.
+- Le bouton **Rejouer** est grisé pendant la mission et devient utilisable à la fin pour recommencer.
+
+## 7. Problèmes fréquents
+
+| Ce que tu vois | Ce qu'il faut faire |
+|---|---|
+| `sudo : commande introuvable` (selon la façon dont la VM a été installée) | Tape `su -` (mot de passe root), puis `apt install -y sudo`, puis `usermod -aG sudo TON_NOM_D_UTILISATEUR`, puis `exit`, déconnecte-toi et reconnecte-toi. |
+| `error: externally-managed-environment` | Tu n'es pas dans le venv. Tape `cd SAE-3.02` puis `source .venv/bin/activate`, et vérifie que `(.venv)` s'affiche. |
+| `ModuleNotFoundError: No module named 'PyQt5'` | Même cause : active le venv, puis refais `pip install -r requirements.txt`. |
+| `Could not load the Qt platform plugin "xcb"` | Il manque des bibliothèques ou il n'y a pas de bureau graphique. Teste : `ldd .venv/lib/python3*/site-packages/PyQt5/Qt5/plugins/platforms/libqxcb.so \| grep "not found"` puis installe les paquets signalés avec `sudo apt install`. La VM doit avoir un bureau graphique. |
+| `Address already in use` (port 5050) | Une ancienne simulation tourne encore. Ferme sa fenêtre, ou tape `pkill -f main.py`, puis relance. |
+| `[DB] Module mariadb absent…` ou `[DB] Erreur…` | Normal sans MariaDB : la simulation fonctionne, rien n'est enregistré. Pour l'activer, voir l'étape 9. |
+| Connexion refusée entre les deux VM | Sur la VM serveur : vérifie que le serveur tourne et écoute (`ss -ltn \| grep 5050`), qu'il a été lancé avec `SAE_ECOUTE=0.0.0.0`, et qu'aucun pare-feu ne bloque (`sudo ufw status`). Vérifie que l'IP est la bonne. |
+
+---
+
+# Documentation technique (pour les plus avancés)
 
 ## Structure du projet
 
@@ -27,7 +201,7 @@ normal.
 .
 ├── main.py              # Point d'entrée : lance l'interface, le serveur et les deux clients
 ├── parametres.py        # Constantes partagées (réseau, vitesses, feux, trajets de l'ambulance)
-├── requirements.txt     # Dépendances Python (PyQt5, mariadb)
+├── requirements.txt     # Dépendances Python (PyQt5, mariadb>=2.0.0rc2)
 ├── server/
 │   ├── server.py        # Serveur TCP : reçoit les messages, décide de l'état des feux
 │   ├── database.py      # Enregistrement des événements dans MariaDB (optionnel)
@@ -44,139 +218,20 @@ normal.
 └── tests/               # Tests unitaires (unittest)
 ```
 
-## Installation sur Debian (12 ou 13)
+## Lancement et réglages réseau
 
-Les commandes ci-dessous partent d'une Debian vierge avec un environnement graphique. Copiez-les dans l'ordre.
-
-```
-sudo apt update
-sudo apt install -y git python3 python3-venv python3-pip libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xkb1
-git clone https://github.com/aymen68212-create/SAE-3.02
-cd SAE-3.02
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-- Les paquets `lib...` sont les bibliothèques système dont Qt a besoin pour afficher une fenêtre.
-- Le dossier `.venv` est un environnement Python isolé : il faut le réactiver dans chaque nouveau terminal avec
-  `source .venv/bin/activate` (depuis le dossier `SAE-3.02`).
-- Le paquet Python `mariadb` (version `2.0.0rc2` ou plus récente, écrit en Python) s'installe sans le connecteur C
-  du système.
-
-## MariaDB (optionnel, côté serveur)
-
-**MariaDB est optionnel** : sans elle, la simulation fonctionne normalement et le serveur affiche simplement un
-message `[DB]` (les événements ne sont pas enregistrés). Pour l'activer :
-
-```
-sudo apt install -y mariadb-server
-sudo systemctl enable --now mariadb
-sudo mariadb -e "CREATE DATABASE IF NOT EXISTS sae302; CREATE USER 'sae'@'localhost' IDENTIFIED BY 'sae'; GRANT ALL PRIVILEGES ON sae302.* TO 'sae'@'localhost';"
-export SAE_DB_USER=sae SAE_DB_PASSWORD=sae
-```
-
-Le couple `root` / `root`, utilisé par défaut dans le code, **ne fonctionne pas sur Debian** : l'utilisateur
-`root` de MariaDB s'y authentifie par socket Unix (il faut être `root` du système, via `sudo`) et n'a pas de mot
-de passe. C'est pourquoi on crée un utilisateur dédié `sae`, puis on indique ses identifiants par les variables
-d'environnement `SAE_DB_USER` et `SAE_DB_PASSWORD`. Ces variables doivent être définies dans le terminal qui lance
-le serveur (le `export` ci-dessus ne vaut que pour le terminal courant). La base `sae302` et ses tables sont
-créées automatiquement au démarrage du serveur.
-
-## Lancement
-
-Dans le dossier `SAE-3.02`, avec l'environnement virtuel activé :
-
-```
-python main.py
-```
-
-Une fenêtre « Simulation Ambulance - IUT Colmar » s'ouvre et la simulation démarre automatiquement : `main.py`
-lance le serveur, le client infrastructure, le client ambulance et l'interface dans le même programme. Le bouton
-**Rejouer** est grisé tant que la mission n'est pas terminée ; il devient actif quand l'ambulance est arrivée et
-relance alors une mission complète.
-
-Autres commandes utiles :
-
-```
-python -m unittest
-QT_QPA_PLATFORM=offscreen python -m unittest
-python -m server.consulter
-python -m server.server
-```
-
-- `python -m unittest` lance tous les tests. Avec `QT_QPA_PLATFORM=offscreen`, Qt n'a pas besoin d'écran
-  (serveur sans interface graphique, intégration continue).
-- `python -m server.consulter` affiche les 20 derniers événements enregistrés en base.
-- `python -m server.server` lance le serveur seul (voir le scénario à deux machines).
-
-Les adresses réseau se règlent avec deux variables d'environnement :
+| Commande | Effet |
+|---|---|
+| `python main.py` | Lance tout : serveur, infrastructure, ambulance et fenêtre, sur la même machine. |
+| `python main.py --sans-serveur` | Lance seulement la fenêtre, le client ambulance et le client infrastructure, qui se connectent au serveur désigné par `SAE_HOTE`. Si le serveur est injoignable, un message en français est affiché et le programme s'arrête. |
+| `python -m server.server` | Lance le serveur seul. |
+| `python -m server.consulter` | Affiche les 20 derniers événements enregistrés en base. |
+| `python -m unittest` | Lance les tests (ajouter `QT_QPA_PLATFORM=offscreen` sur une machine sans écran). |
 
 | Variable | Rôle | Valeur par défaut |
 |---|---|---|
 | `SAE_HOTE` | Adresse du serveur, utilisée par les clients (ambulance et infrastructure) | `localhost` |
 | `SAE_ECOUTE` | Adresse sur laquelle le serveur écoute (`0.0.0.0` : toutes les interfaces réseau) | `localhost` |
-
-## Scénario à deux machines
-
-Exemple avec deux machines virtuelles Debian sur le même réseau, chacune installée comme décrit plus haut.
-
-**VM serveur** (avec MariaDB si on veut enregistrer les événements) :
-
-```
-cd SAE-3.02
-source .venv/bin/activate
-export SAE_DB_USER=sae SAE_DB_PASSWORD=sae
-SAE_ECOUTE=0.0.0.0 python -m server.server
-```
-
-Pour connaître l'adresse IP de la VM serveur, lancez `ip a` et repérez la ligne `inet` de l'interface réseau
-(par exemple `192.168.1.20`).
-
-**VM client** (interface graphique, ambulance et infrastructure) :
-
-```
-sudo apt install -y netcat-openbsd
-nc -vz <IP de la VM serveur> 5050
-cd SAE-3.02
-source .venv/bin/activate
-SAE_HOTE=<IP de la VM serveur> python main.py --sans-serveur
-```
-
-- `nc -vz <IP> 5050` teste la connexion au port du serveur ; la réponse doit contenir `succeeded` (ou `open`).
-- L'option `--sans-serveur` lance seulement l'interface et les deux clients, qui se connectent au serveur
-  désigné par `SAE_HOTE`. Sans cette option, `python main.py` lance tout sur la même machine.
-- Démarrez toujours le serveur avant le client. Si le serveur est injoignable, le client affiche un message en
-  français et s'arrête.
-
-## Problèmes fréquents
-
-**`error: externally-managed-environment` pendant `pip install`.** Debian interdit d'installer des paquets Python
-dans le système. Utilisez l'environnement virtuel : `python3 -m venv .venv`, puis `source .venv/bin/activate`,
-puis `pip install -r requirements.txt`.
-
-**`Could not load the Qt platform plugin "xcb"` au lancement.** Il manque une bibliothèque système. Pour
-identifier laquelle (depuis le dossier du projet, environnement virtuel activé) :
-
-```
-ldd .venv/lib/python3*/site-packages/PyQt5/Qt5/plugins/platforms/libqxcb.so | grep "not found"
-```
-
-Chaque ligne `not found` désigne une bibliothèque absente ; installez le paquet Debian correspondant avec
-`sudo apt install -y <paquet>` (la liste de l'installation ci-dessus couvre les cas courants). Vérifiez aussi
-qu'une session graphique est ouverte (variable `DISPLAY` définie) ; sans écran, utilisez
-`QT_QPA_PLATFORM=offscreen`.
-
-**`OSError: [Errno 98] Address already in use` (port 5050 occupé).** Un autre serveur tourne déjà (souvent une
-simulation précédente restée ouverte). Identifiez-le avec `ss -ltnp | grep 5050`, puis fermez-le
-(`kill <PID>`) avant de relancer.
-
-**Message `[DB]` au démarrage du serveur.** MariaDB est absente, arrêtée ou refuse les identifiants : la
-simulation fonctionne, mais rien n'est enregistré. Pour l'activer, suivez la section MariaDB ; en cas de
-`Access denied`, vérifiez `SAE_DB_USER` et `SAE_DB_PASSWORD` dans le terminal qui lance le serveur.
-
-**`Impossible de joindre le serveur ...`.** Le serveur n'est pas lancé, `SAE_HOTE` est incorrecte ou le port 5050
-est bloqué (testez avec `nc -vz <IP> 5050`).
 
 ## Fonctionnement
 
@@ -247,16 +302,8 @@ Les identifiants de connexion se règlent avec des variables d'environnement (le
 | `SAE_DB_PASSWORD` | `root` |
 | `SAE_DB_NAME` | `sae302` |
 
-Sur Debian, ces valeurs par défaut ne fonctionnent pas (voir la section MariaDB : créez l'utilisateur `sae` et
-définissez `SAE_DB_USER` et `SAE_DB_PASSWORD`).
-
-Pour afficher les 20 derniers événements enregistrés, depuis la racine du projet :
-
-```
-python -m server.consulter
-```
-
-Sans connexion à la base, le script affiche un message d'explication et s'arrête sans erreur.
+Sur Debian, ces valeurs par défaut ne fonctionnent pas : créer l'utilisateur `sae` (étape 9 du guide) et définir
+`SAE_DB_USER` et `SAE_DB_PASSWORD`.
 
 ## Tests
 
@@ -265,8 +312,6 @@ Les tests unitaires (dossier `tests/`) utilisent `unittest` et se lancent depuis
 ```
 python -m unittest
 ```
-
-Sur une machine sans écran, ajoutez `QT_QPA_PLATFORM=offscreen` devant la commande.
 
 - `tests/test_trajets.py` : départ et arrivée des trajets aller et retour, pas de point répété et pas plus de
   10 pixels entre deux points consécutifs.
